@@ -21,7 +21,7 @@ namespace Isidore.Render
         /// <summary>
         /// Current time of the material
         /// </summary>
-        internal double currentTime;
+        internal double currentTime = 0.0;
 
         /// <summary>
         /// Previous states maintained by the material

@@ -47,6 +47,10 @@ namespace Isidore.Render
             get { return useAlpha; }
             set { useAlpha = value; }
         }
+
+        /// <summary>
+        /// Backing value for <see cref="UseAlpha"/>.
+        /// </summary>
         public bool useAlpha = true;
 
         /// <summary>

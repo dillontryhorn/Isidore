@@ -149,6 +149,11 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Inputs\NASTRAN Files\Sphere-000.dat">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Isidore.ImgProcess\Isidore.ImgProcess.csproj">
       <Project>{73474a33-594f-477b-a461-25a51fe0564c}</Project>
       <Name>Isidore.ImgProcess</Name>

@@ -43,6 +43,17 @@ namespace Isidore.Render
         #endregion Fields & Properties
         #region Constructors
 
+        /// <summary>
+        /// Initializes incident data for a ray/source intersection.
+        /// </summary>
+        /// <param name="los">
+        /// Indicates whether the source has line of sight to the intersection.
+        /// </param>
+        /// <param name="travel">Travel distance to the intersection.</param>
+        /// <param name="propVec">
+        /// Propagation vector from the source to the intersection.
+        /// </param>
+        /// <param name="source">Source associated with the incident data.</param>
         public IncidentData(bool los = false,
             double travel = double.PositiveInfinity,
             Vector propVec = null, Source source = null)

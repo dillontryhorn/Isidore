@@ -9,17 +9,11 @@ namespace Isidore_Tests
 
         public static bool Run()
         {
-            // Checks from x32 or x64;
-            int check = IntPtr.Size;
-
-            // Relative path to dat file
-            String relPath = "\\..\\..\\";
-            if (check == 8) // in x64, there's an additional directory
-                relPath += "..\\";
-
-            // File Location
-            String path = Directory.GetCurrentDirectory();
-            String fileName = path + relPath + "Inputs\\NASTRAN Files\\Sphere-000.dat";
+            // Test fixtures are copied next to the executable so callers do
+            // not need to launch the test from a particular directory.
+            String fileName = Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory,
+                "Inputs", "NASTRAN Files", "Sphere-000.dat");
 
             // Loads data
             Data.NAS geomData = Load.NAS(fileName);
