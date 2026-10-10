@@ -64,6 +64,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\Common\BitmapPixels.cs"><Link>BitmapPixels.cs</Link></Compile>
     <Compile Include="Contour.cs" />
     <Compile Include="ConvertImg.cs" />
     <Compile Include="Canny.cs" />

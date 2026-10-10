@@ -3,6 +3,7 @@
 using System.Collections.Concurrent; // TO access Partitioner
 using System.Threading.Tasks;
 using System.Linq.Expressions;
+using NumericsVector = System.Numerics.Vector;
 
 namespace Isidore.Maths
 {
@@ -29,16 +30,18 @@ namespace Isidore.Maths
             int len1 = arr1.Length;
             int[] arrOut = new int[len1];
 
-            // Partitions source array by columns
-            //var part = Partitioner.Create(0, len1);
-            //Parallel.ForEach(part, (range) =>
-            //{
-            //    for (int idx0 = range.Item1; idx0 < range.Item2; idx0++)
-            //        arrOut[idx0] = arr1[idx0] + arr2[idx0];
-            //});
-
-            for (int idx0 = 0; idx0 < len1; idx0++)
-                arrOut[idx0] = arr1[idx0] + arr2[idx0];
+            int idx0 = 0;
+            int width = System.Numerics.Vector<int>.Count;
+            // Avoid vector setup for arrays smaller than two full vectors.
+            if (NumericsVector.IsHardwareAccelerated && len1 >= 2 * width)
+            {
+                int vectorEnd = len1 - width;
+                for (; idx0 <= vectorEnd; idx0 += width)
+                    (new System.Numerics.Vector<int>(arr1, idx0) +
+                        new System.Numerics.Vector<int>(arr2, idx0)).CopyTo(arrOut, idx0);
+            }
+            for (; idx0 < len1; idx0++)
+                arrOut[idx0] = unchecked(arr1[idx0] + arr2[idx0]);
             return arrOut;
         }
 
@@ -53,16 +56,17 @@ namespace Isidore.Maths
             int len1 = arr.Length;
             int[] arrOut = new int[len1];
 
-            // Partitions source array by columns
-            //var part = Partitioner.Create(0, len1);
-            //Parallel.ForEach(part, (range) =>
-            //{
-            //    for (int idx0 = range.Item1; idx0 < range.Item2; idx0++)
-            //            arrOut[idx0] = arr[idx0] + val;
-            //});
-
-            for (int idx0 = 0; idx0 < len1; idx0++)
-                arrOut[idx0] = arr[idx0] + val;
+            int idx0 = 0;
+            int width = System.Numerics.Vector<int>.Count;
+            if (NumericsVector.IsHardwareAccelerated && len1 >= 2 * width)
+            {
+                var scalar = new System.Numerics.Vector<int>(val);
+                int vectorEnd = len1 - width;
+                for (; idx0 <= vectorEnd; idx0 += width)
+                    (new System.Numerics.Vector<int>(arr, idx0) + scalar).CopyTo(arrOut, idx0);
+            }
+            for (; idx0 < len1; idx0++)
+                arrOut[idx0] = unchecked(arr[idx0] + val);
             return arrOut;
         }
 
@@ -174,15 +178,16 @@ namespace Isidore.Maths
             int len1 = arr1.Length;
             double[] arrOut = new double[len1];
 
-            // Partitions source array by columns
-            //var part = Partitioner.Create(0, len1);
-            //Parallel.ForEach(part, (range) =>
-            //{
-            //    for (int idx0 = range.Item1; idx0 < range.Item2; idx0++)
-            //        arrOut[idx0] = arr1[idx0] + arr2[idx0];
-            //});
-
-            for (int idx0 = 0; idx0 < len1; idx0++)
+            int idx0 = 0;
+            int width = System.Numerics.Vector<double>.Count;
+            if (NumericsVector.IsHardwareAccelerated && len1 >= 2 * width)
+            {
+                int vectorEnd = len1 - width;
+                for (; idx0 <= vectorEnd; idx0 += width)
+                    (new System.Numerics.Vector<double>(arr1, idx0) +
+                        new System.Numerics.Vector<double>(arr2, idx0)).CopyTo(arrOut, idx0);
+            }
+            for (; idx0 < len1; idx0++)
                 arrOut[idx0] = arr1[idx0] + arr2[idx0];
             return arrOut;
         }
@@ -198,15 +203,16 @@ namespace Isidore.Maths
             int len1 = arr.Length;
             double[] arrOut = new double[len1];
 
-            // Partitions source array by columns
-            //var part = Partitioner.Create(0, len1);
-            //Parallel.ForEach(part, (range) =>
-            //{
-            //    for (int idx0 = range.Item1; idx0 < range.Item2; idx0++)
-            //        arrOut[idx0] = arr[idx0] + val;
-            //});
-
-            for (int idx0 = 0; idx0 < len1; idx0++)
+            int idx0 = 0;
+            int width = System.Numerics.Vector<double>.Count;
+            if (NumericsVector.IsHardwareAccelerated && len1 >= 2 * width)
+            {
+                var scalar = new System.Numerics.Vector<double>(val);
+                int vectorEnd = len1 - width;
+                for (; idx0 <= vectorEnd; idx0 += width)
+                    (new System.Numerics.Vector<double>(arr, idx0) + scalar).CopyTo(arrOut, idx0);
+            }
+            for (; idx0 < len1; idx0++)
                 arrOut[idx0] = arr[idx0] + val;
             return arrOut;
         }

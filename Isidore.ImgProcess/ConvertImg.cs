@@ -37,24 +37,34 @@ namespace Isidore.ImgProcess
 
             Bitmap img = new Bitmap(xLen, yLen);
 
-            if (maxVal == 0.0)
+            try
             {
-                for (int xIdx = 0; xIdx < xLen; xIdx++)
-                    for (int yIdx = 0; yIdx < yLen; yIdx++)
-                        img.SetPixel(xIdx, yIdx, Color.Black);
+                int[] pixels = new int[arr.Length];
+                if (maxVal == 0.0)
+                {
+                    for (int idx = 0; idx < pixels.Length; idx++)
+                        pixels[idx] = Color.Black.ToArgb();
+                }
+                else
+                {
+                    // Keep the conversion order and Color's range validation,
+                    // then transfer complete rows without per-pixel GDI+ calls.
+                    for (int xIdx = 0; xIdx < xLen; xIdx++)
+                        for (int yIdx = 0; yIdx < yLen; yIdx++)
+                        {
+                            int pix = (int)(255.0 * (Convert.ToDouble(
+                                arr[xIdx, yIdx]) - minVal) / maxVal);
+                            pixels[yIdx * xLen + xIdx] = Color.FromArgb(pix, pix, pix).ToArgb();
+                        }
+                }
+                BitmapPixels.WriteArgb(img, pixels);
                 return img;
             }
-
-            for (int xIdx = 0; xIdx < xLen; xIdx++)
-                for (int yIdx = 0; yIdx < yLen; yIdx++)
-                {
-                    int pix = (int)(255.0 * (Convert.ToDouble(
-                        arr[xIdx, yIdx]) - minVal) / maxVal);
-                    Color rgb = Color.FromArgb(pix, pix, pix);
-                    img.SetPixel(xIdx, yIdx, rgb);
-                }
-            
-            return img;
+            catch
+            {
+                img.Dispose();
+                throw;
+            }
         }
 
         /// <summary>
@@ -83,14 +93,7 @@ namespace Isidore.ImgProcess
         /// <returns> color array </returns>
         public static Color[,] toColor(Bitmap bitmap)
         {
-            int width = bitmap.Width;
-            int height = bitmap.Height;
-
-            Color[,] img = new Color[width, height];
-            for (int k1 = 0; k1 < width; k1++)
-                for (int k2 = 0; k2 < height; k2++)
-                    img[k1, k2] = bitmap.GetPixel(k1, k2);
-            return img;
+            return BitmapPixels.ReadColors(bitmap);
         }
     }
 }

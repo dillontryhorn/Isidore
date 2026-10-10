@@ -91,3 +91,6 @@
 *.bak
 /tests/bin
 /tests/obj
+/benchmarks/bin
+/benchmarks/obj
+/BenchmarkDotNet.Artifacts

@@ -23,7 +23,11 @@ internal static class RegressionTests
         bool cpuOnly = Array.IndexOf(args, "--cpu") >= 0;
         if (!cpuOnly)
             Run("GPU runtime and safe fallback", GpuRuntimeRegression.Run, ref failed);
+        if (!cpuOnly)
+            Run("Pooled GPU download equivalence", PoolRegression.Run, ref failed);
         Run("Maths", MathsRegression.Run, ref failed);
+        Run("SIMD primitive array equivalence", SimdRegression.Run, ref failed);
+        Run("Bitmap pixel equivalence", BitmapPerformanceRegression.Run, ref failed);
         Run("Additional maths edge cases", AdditionalMathsRegression.Run, ref failed);
         Run("Render", RenderRegression.Run, ref failed);
         Run("Additional rendering edge cases", AdditionalRenderRegression.Run, ref failed);

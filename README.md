@@ -85,8 +85,9 @@ intersection processing.
 
 The existing APIs automatically use an OpenCL GPU for supported large batches.
 Use a **64-bit process** and a graphics driver exposing double-precision OpenCL 1.2+
-with an online compiler. A CUDA toolkit, native build step, and additional NuGet
-packages are unnecessary. Missing or incompatible drivers retain CPU execution.
+with an online compiler. The backend calls the installed driver directly. Restore
+the pinned managed runtime packages described below; a CUDA toolkit or native
+build step is unnecessary. Missing or incompatible drivers retain CPU execution.
 
 ```csharp
 // Defaults to Automatic. All policies preserve the CPU fallback.
@@ -138,6 +139,11 @@ inexpensive scalar geometry are not GPU workloads. The stateful turbulence model
 workflows and scalar four-dimensional noise retain CPU processing.
 
 Programs and bounded device buffers are cached and shared safely across callers.
+GPU downloads stage into internal pooled primitive buffers, copying only the logical
+output bytes after every download succeeds. The pool retains at most two buffers
+per size bucket through 1 MiB (less than 4 MiB in total); larger downloads use
+the original clone staging path. Caller-owned inputs and returned arrays are never
+pooled.
 Every call uploads current input data; public mutable arrays never rely on stale
 device copies. Failed GPU operations leave output buffers unchanged before CPU
 fallback. `GpuAcceleration.ReleaseResources()` clears caches and permits device
@@ -182,6 +188,15 @@ execution adding another 0.17–0.57 seconds. Warm figures exclude those startup
 costs; automatic mode accounts for them through its separate thresholds.
 
 ## Maths, textures, and turbulence
+
+The concrete one-dimensional `int` and `double` overloads of `Operator.Add`
+and `Operator.Multiply` use `System.Numerics.Vector<T>` when the runtime supports
+SIMD and the input spans at least two vectors. Small inputs and remaining tail
+elements use scalar arithmetic. The operations still allocate independent output
+arrays, retain unchecked integer overflow, and do not reorder floating-point
+reductions. Generic operators and custom numeric types retain their existing
+delegate behavior. Hardware acceleration on .NET Framework requires a 64-bit
+process and a compatible JIT/CPU.
 
 `Point`, `Vector`, `Normal`, and `Transform` form the shared geometry layer.
 Transforms support translation, rotation, scaling, projection, and composition.
@@ -228,6 +243,12 @@ var cube = Isidore.Library.Models.Cube();
 var pixels = Isidore.Load.Load.Bitmap("image.png");
 var nastran = Isidore.Load.Load.NAS("mesh.dat");
 ```
+
+Bitmap loading and `ConvertImg.toColor` read common RGB, ARGB, and indexed
+formats in bulk with `Bitmap.LockBits`, preserving palette colors, transparency,
+row padding, and negative strides. Premultiplied and higher-precision formats
+retain `GetPixel` conversion. `ConvertImg.toBitmap` keeps its grayscale
+normalization and validation and writes the resulting pixels in bulk.
 
 The OBJ reader handles file-wide positive/negative indices, independent position,
 texture, and normal indices, objects/groups, comments, whitespace, and continued
@@ -291,15 +312,19 @@ configurations are also provided. Match the executable platform to the installed
 MATLAB COM server when running the original suite. Outputs are in each project's
 `bin` directory.
 
-The checked-in `packages.config` files describe legacy Enterprise Library and
-Rhino3dmIO references. If those packages are needed, restore them into the
+The checked-in `packages.config` files pin `System.Buffers` 4.6.1 and
+`System.Numerics.Vectors` 4.6.1 alongside legacy Enterprise Library and Rhino3dmIO
+references. Restore them into the
 solution's `packages` directory using Visual Studio's NuGet restore or:
 
 ```powershell
 nuget restore .\Isidore.sln
 ```
 
-The active core library source does not call those external APIs. Rhino native
+Both new runtime packages use the MIT license and have no package dependencies
+for the .NET Framework assets used here. `THIRD-PARTY-NOTICES.md` preserves their
+copyright and license terms and is copied to library/application build outputs.
+The active core library source does not call the legacy external APIs. Rhino native
 binaries are copied to the original test output when the restored package contains
 them. The Rhino loader/test implementation is currently inactive.
 
@@ -337,6 +362,18 @@ timings include packing, allocation, transfers, downloads and remaining CPU work
 Maths benchmarks report warm and first-dispatch measurements separately. Image,
 noise, and mesh benchmarks report warm measurements; mesh output includes both
 single-core and multicore CPU comparisons and automatic-policy dispatch counts.
+
+For before/after SIMD, bitmap conversion, and managed GPU staging comparisons:
+
+```powershell
+.\benchmarks\run-benchmarks.ps1
+```
+
+The separate BenchmarkDotNet project requires a .NET SDK and keeps its tooling
+dependencies out of the production libraries. It reports time and managed
+allocation against the original implementations. See `benchmarks/README.md`
+for filters, measurement limits, and tooling license notices.
+Recorded before/after results are in `benchmarks/RESULTS.md`.
 
 To run the original demonstrations after building the full solution:
 

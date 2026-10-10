@@ -23,6 +23,14 @@ if (-not $MSBuildPath) {
 }
 if (-not $MSBuildPath) { throw 'Windows MSBuild was not found. Run from a Visual Studio Developer PowerShell or pass -MSBuildPath.' }
 
+# Restore the pinned runtime packages when running from a fresh checkout.
+$buffersDll = Join-Path $repositoryPath 'packages\System.Buffers.4.6.1\lib\net462\System.Buffers.dll'
+$vectorsDll = Join-Path $repositoryPath 'packages\System.Numerics.Vectors.4.6.1\lib\net462\System.Numerics.Vectors.dll'
+if (-not (Test-Path -LiteralPath $buffersDll) -or -not (Test-Path -LiteralPath $vectorsDll)) {
+    & $MSBuildPath (Join-Path $repositoryPath 'Isidore.Maths\Isidore.Maths.csproj') /t:Restore /p:RestorePackagesConfig=true "/p:RestoreRepositoryPath=$repositoryPath\packages" "/p:RestoreConfigFile=$repositoryPath\NuGet.Config" "/p:TargetPlatformSdkPath=$repositoryPath" /p:TargetPlatformDisplayName=Windows /v:minimal /nologo
+    if ($LASTEXITCODE -ne 0) { throw "Runtime dependency restore failed with exit code $LASTEXITCODE." }
+}
+
 # Explicit SDK properties avoid an unnecessary SDK inventory lookup in restricted sessions.
 & $MSBuildPath (Join-Path $PSScriptRoot 'RegressionTests.csproj') /t:Build "/p:Configuration=$Configuration" /p:Platform=AnyCPU "/p:TargetPlatformSdkPath=$repositoryPath" /p:TargetPlatformDisplayName=Windows /v:minimal /nologo
 if ($LASTEXITCODE -ne 0) { throw "Regression build failed with exit code $LASTEXITCODE." }

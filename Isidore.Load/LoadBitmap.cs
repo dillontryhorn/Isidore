@@ -23,17 +23,10 @@ namespace Isidore.Load
                 return null;
             }
 
-            // Retrieves bitmap and extract image size
+            // Retrieves the bitmap and extracts its colors in bulk where possible.
             using (Bitmap rawImg = new Bitmap(FileName))
             {
-                // This copy avoids a dependency on ImgProcess.
-                int width = rawImg.Width;
-                int height = rawImg.Height;
-                Color[,] cImg = new Color[width, height];
-                for (int k1 = 0; k1 < width; k1++)
-                    for (int k2 = 0; k2 < height; k2++)
-                        cImg[k1, k2] = rawImg.GetPixel(k1, k2);
-                return cImg;
+                return BitmapPixels.ReadColors(rawImg);
             }
         }
     }

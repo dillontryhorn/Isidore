@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -54,14 +55,21 @@ namespace Isidore.Maths
     }
 
     /// <summary>
-    /// Optional, dependency-free OpenCL acceleration. A missing or incompatible
+    /// Optional OpenCL acceleration. A missing or incompatible
     /// driver and failed dispatches return false so callers can use their CPU path.
-    /// Programs and bounded device buffers are reused; one queue is synchronized
-    /// across callers. Kernels use doubles without relaxed math or fused operations.
+    /// Programs, bounded device buffers, and bounded download staging buffers are
+    /// reused; one queue is synchronized across callers. Kernels use doubles
+    /// without relaxed math or fused operations.
     /// </summary>
     public static class GpuAcceleration
     {
         private static readonly object Sync = new object();
+        private const int MaxPooledDownloadBytes = 1024 * 1024;
+        // Primitive staging preserves double alignment and copies raw bytes for
+        // either supported type. Retain less than 4 MiB across all buckets;
+        // larger downloads keep the original clone staging path.
+        private static readonly ArrayPool<double> DownloadPool =
+            ArrayPool<double>.Create(MaxPooledDownloadBytes / sizeof(double), 2);
         private static readonly Dictionary<string, Kernel> Kernels = new Dictionary<string, Kernel>();
         private static readonly HashSet<string> FailedKernels = new HashSet<string>();
         private static int mode = (int)InitialMode();
@@ -206,6 +214,8 @@ namespace Isidore.Maths
                 string key = kernelName + "\n" + source;
                 if (FailedKernels.Contains(key)) return false;
                 Kernel kernel;
+                Array[] results = null;
+                double[][] rentedResults = null;
                 try
                 {
                     // Reject oversized batches before paying compilation costs.
@@ -245,17 +255,30 @@ namespace Isidore.Maths
 
                     // Stage all downloads before publishing any result. A later
                     // failed read must not leave a partially updated host array.
-                    Array[] results = new Array[arguments.Length];
+                    // Pooled buffers may be larger than the public arrays. Read
+                    // and publish only their logical bytes, preserving any rank.
+                    results = new Array[arguments.Length];
+                    rentedResults = new double[arguments.Length][];
                     for (int index = 0; index < arguments.Length; index++)
                         if (arguments[index].IsOutput)
                         {
-                            results[index] = (Array)arguments[index].Data.Clone();
-                            Transfer(results[index], kernel.Buffers[index].Handle, true);
+                            int bytes = Buffer.ByteLength(arguments[index].Data);
+                            if (bytes <= MaxPooledDownloadBytes)
+                            {
+                                double[] rented = DownloadPool.Rent(
+                                    (bytes + sizeof(double) - 1) / sizeof(double));
+                                rentedResults[index] = rented;
+                                results[index] = rented;
+                            }
+                            else
+                                results[index] = (Array)arguments[index].Data.Clone();
+                            Transfer(results[index], kernel.Buffers[index].Handle, true, bytes);
                         }
                     Check(Native.clFinish(queue), "finish dispatch");
                     for (int index = 0; index < arguments.Length; index++)
                         if (results[index] != null)
-                            Buffer.BlockCopy(results[index], 0, arguments[index].Data, 0, Buffer.ByteLength(results[index]));
+                            Buffer.BlockCopy(results[index], 0, arguments[index].Data, 0,
+                                Buffer.ByteLength(arguments[index].Data));
                     Interlocked.Increment(ref dispatchCount);
                     lastError = "";
                     return true;
@@ -291,6 +314,12 @@ namespace Isidore.Maths
                     lastError = "The array exceeds this GPU backend's transfer size limit.";
                     Native.clFinish(queue);
                     return false;
+                }
+                finally
+                {
+                    if (rentedResults != null)
+                        foreach (double[] result in rentedResults)
+                            if (result != null) DownloadPool.Return(result);
                 }
             }
         }
@@ -460,10 +489,16 @@ namespace Isidore.Maths
 
         private static void Transfer(Array array, IntPtr buffer, bool read)
         {
+            Transfer(array, buffer, read, Buffer.ByteLength(array));
+        }
+
+        private static void Transfer(Array array, IntPtr buffer, bool read, int bytes)
+        {
+            if (bytes < 0 || bytes > Buffer.ByteLength(array))
+                throw new ArgumentOutOfRangeException("bytes");
             GCHandle pinned = GCHandle.Alloc(array, GCHandleType.Pinned);
             try
             {
-                int bytes = Buffer.ByteLength(array);
                 int error = read
                     ? Native.clEnqueueReadBuffer(queue, buffer, 1, UIntPtr.Zero, Size(bytes), pinned.AddrOfPinnedObject(), 0, null, IntPtr.Zero)
                     : Native.clEnqueueWriteBuffer(queue, buffer, 1, UIntPtr.Zero, Size(bytes), pinned.AddrOfPinnedObject(), 0, null, IntPtr.Zero);
