@@ -1,5 +1,20 @@
 # Isidore
 
+> **Independent fork notice**
+>
+> I forked this project from [JosephTRiley/Isidore](https://github.com/JosephTRiley/Isidore).
+> Credit for the original Isidore project belongs to JosephTRiley and its original
+> contributors.
+>
+> This fork is maintained independently. Modifications, additions, documentation,
+> and maintenance decisions specific to this fork are my responsibility and in no
+> way represent JosephTRiley's work, views, or endorsement. They should not be
+> attributed to him. This fork is not an official version of his project and does
+> not imply his review, approval, sponsorship, or support.
+>
+> Original authorship, copyright notices, third-party attributions, and applicable
+> license terms remain in effect.
+
 Isidore is a C# library for scientific geometry, ray tracing, procedural textures,
 and turbulence simulation. It targets **.NET Framework 4.8** on Windows. The
 solution contains reusable libraries and a console demonstration/test program;
