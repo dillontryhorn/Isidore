@@ -242,7 +242,7 @@
         new public Normal Sq()
         {
             // This ensures the return is a Normal & not a Vector
-            return base.Sq() as Normal;
+            return new Normal(base.Sq());
         }
 
         /// <summary>
@@ -252,7 +252,7 @@
         /// <returns> normal square root </returns>
         new public Normal Sqrt()
         {
-            return base.Sqrt() as Normal;
+            return new Normal(base.Sqrt());
         }
 
         /// <summary>
@@ -261,7 +261,7 @@
         /// <returns> Normalized Normal</returns>
         new public Normal CopyNormalize()
         {
-            return base.CopyNormalize() as Normal;
+            return new Normal(base.CopyNormalize());
         }
 
         /// <summary>
@@ -271,7 +271,7 @@
         /// <returns> Cross product </returns>
         public Normal Cross(Normal v1)
         {
-            return Cross(v1 as Vector) as Normal;
+            return new Normal(base.Cross(v1));
         }
 
         /// <summary>
@@ -293,7 +293,7 @@
         /// <returns> Minimum normal </returns>
         public Normal Min(Normal v0, Normal v1)
         {
-            return Min(v0 as Vector, v1 as Vector) as Normal;
+            return new Normal(base.Min(v0, v1));
 
         }
 
@@ -316,7 +316,7 @@
         /// <returns> Maximum normal </returns>
         public Normal Max(Normal v0, Normal v1)
         {
-            return Max(v0 as Vector, v1 as Vector) as Normal;
+            return new Normal(base.Max(v0, v1));
         }
 
         /// <summary>
@@ -328,6 +328,25 @@
         public Normal Max(Normal v1)
         {
             return Max(this, v1);
+        }
+
+        /// <summary>
+        /// Transforms this normal by the inverse transpose of the point
+        /// transformation, preserving its perpendicular relationship to surfaces.
+        /// </summary>
+        /// <param name="trans"> Transformation instance </param>
+        /// <param name="inverse"> Use the reverse transformation </param>
+        public override void Transform(Transform trans, bool inverse = false)
+        {
+            double[,] matrix = inverse ? trans.M : trans.iM;
+            int dimensions = matrix.GetLength(0) - 1;
+            double[] original = (double[])Comp.Clone();
+            for (int row = 0; row < dimensions; row++)
+            {
+                Comp[row] = 0;
+                for (int column = 0; column < dimensions; column++)
+                    Comp[row] += original[column] * matrix[column, row];
+            }
         }
 
         /// <summary>
@@ -372,7 +391,7 @@
         /// <returns> Cross product </returns>
         static public Normal Cross(Normal v0, Normal v1)
         {
-            return Vector.Cross(v0 as Vector, v1 as Vector) as Normal;
+            return new Normal(Vector.Cross(v0, v1));
         }
 
         /// <summary>
@@ -445,26 +464,7 @@
         /// <returns> Boolean equivalence </returns>
         public override bool Equals(System.Object obj)
         {
-            // If parameter is null return false
-            if (obj == null)
-                return false;
-
-            // If obj can't be cast to a vector, returns false
-            Normal n = obj as Normal;
-            if (n == null)
-                return false;
-
-            // If the point components are a different size, returns false
-            if (Comp.Length != n.Comp.Length)
-                return false;
-
-            // Checks each value in each dimension
-            for (int idx = 0; idx < Comp.Length; idx++)
-                if (Comp[idx] != n.Comp[idx])
-                    return false;
-
-            // At this point, it's a match
-            return true;
+            return base.Equals(obj);
         }
 
         /// <summary>
@@ -474,21 +474,7 @@
         /// <returns> Boolean equivalence </returns>
         public bool Equals(Normal n)
         {
-            // If v is null, return false
-            if ((object)n == null)
-                return false;
-
-            // If the point components are a different size, returns false
-            if (Comp.Length != n.Comp.Length)
-                return false;
-
-            // Checks each value in each dimension
-            for (int idx = 0; idx < Comp.Length; idx++)
-                if (Comp[idx] != n.Comp[idx])
-                    return false;
-
-            // At this point, it's a match
-            return true;
+            return base.Equals(n);
         }
 
         /// <summary>

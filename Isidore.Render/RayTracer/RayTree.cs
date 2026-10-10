@@ -49,7 +49,7 @@ namespace Isidore.Render
         public RayTree(RenderRay ray = null)
         {
             // Copies ray
-            rays = new RenderRays { ray };
+            rays = new RenderRays { ray ?? new RenderRay() };
         }
 
         # endregion Constructor
@@ -61,7 +61,14 @@ namespace Isidore.Render
         public void Reset()
         {
             // Removes all rays after the initial ray
-            rays.RemoveRange(1, rays.Count - 2);
+            if (rays.Count > 1)
+                rays.RemoveRange(1, rays.Count - 1);
+            if (rays.Count > 0)
+            {
+                rays[0].Status = RayStatus.Open;
+                rays[0].IntersectData = new IntersectData();
+            }
+            open = rays.Count > 0;
         }
 
         /// <summary>
@@ -78,6 +85,7 @@ namespace Isidore.Render
             else
             {
                 rays.Add(ray);
+                open = true;
             }
 
         }

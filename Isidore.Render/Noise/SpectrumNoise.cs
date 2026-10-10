@@ -118,7 +118,7 @@ namespace Isidore.Render
         /// specific data types 
         /// </summary>
         /// <returns> Clone copy </returns>
-        new protected virtual Noise CloneImp()
+        protected override Noise CloneImp()
         {
             // Shallow copies from base
             SpectrumNoise newCopy = base.CloneImp() as SpectrumNoise;

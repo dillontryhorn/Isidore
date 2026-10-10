@@ -17,13 +17,14 @@
                     "The index must be as long as the rank.", 
                     "LinearIndex");
 
-            // Location of index in point grid array
-            // First point has no scalar
-            int location = index[0];
-
-            // Cycles through each lower dimension
-            for (int idx = 1; idx < resolution.Length; idx++)
-                location += resolution[idx - 1] * index[idx];
+            // The first dimension varies fastest, matching SubscriptIndex.
+            int location = 0;
+            int stride = 1;
+            for (int idx = 0; idx < resolution.Length; idx++)
+            {
+                location += stride * index[idx];
+                stride *= resolution[idx];
+            }
 
             return location;
         }

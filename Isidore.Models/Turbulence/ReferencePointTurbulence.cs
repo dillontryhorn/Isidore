@@ -145,7 +145,7 @@ namespace Isidore.Models
                 double[] turbDist0, turbDist1;
                 val = GetInterpVal(refPt0, refPt1, pos, now,
                     out val0, out val1, out turbDist0, out turbDist1);
-                turbDist = turbDist0.Concat(turbDist1) as double[];
+                turbDist = turbDist0.Concat(turbDist1).ToArray();
             }
 
             return val;

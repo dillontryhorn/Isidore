@@ -161,6 +161,8 @@ namespace Isidore.Render
         {
             if (Sample == null && Value == null)
                 return;
+            if (Sample == null || Value == null)
+                throw new ArgumentException("Sample and Value must both be supplied.");
             // Checks that Sample and Value are the same length, throws if not
             if (Sample.Length != Value.Length)
             {
@@ -187,7 +189,7 @@ namespace Isidore.Render
         /// </summary>
         /// <param name="spectrum"> Spectrum instance to copy </param>
         public Spectrum(Spectrum<SampleType, ValueType> spectrum):this(
-            (SampleType[])spectrum.sample.Clone(), (ValueType[])spectrum.value.Clone())
+            spectrum.sample, spectrum.value)
         {
         }
 
@@ -200,10 +202,6 @@ namespace Isidore.Render
         /// <returns> Clone copy of this instance </returns>
         public ISpectrum Clone()
         {
-            // Finds type
-            Type SampleType = this.sample.GetType();
-            Type ValueType = this.value.GetType();
-
             // Copy types to spectrum
             Spectrum<SampleType, ValueType> newSpec = new Spectrum<SampleType, ValueType>(this.sample, this.value);
             return newSpec;
@@ -228,7 +226,7 @@ namespace Isidore.Render
             Spectrums newList = new Spectrums();
             ForEach(item =>
                 {
-                    newList.Add(item);
+                    newList.Add(item.Clone());
                 });
 
             return newList;

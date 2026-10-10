@@ -155,6 +155,9 @@ namespace Isidore.Render
             // Repeats the operation through each sub-field 
             for (int idx = 1; idx < fieldnames.Length; idx++)
             {
+                if (value == null)
+                    return default(T);
+
                 type = value.GetType();                
                 finfo = type.GetField(fieldnames[idx]);
                 pinfo = type.GetProperty(fieldnames[idx]);
@@ -166,7 +169,7 @@ namespace Isidore.Render
                     value = pinfo.GetValue(value);
             }
 
-            return (T)value;
+            return value == null ? default(T) : (T)value;
         }
 
         /// <summary>
@@ -224,16 +227,26 @@ namespace Isidore.Render
         /// <returns> The cloned copy </returns>
         public IntersectData Clone()
         {
+            IntersectData copy = CloneFields();
+            if (CastedRays != null)
+                copy.CastedRays = CastedRays.Clone();
+            return copy;
+        }
+
+        internal IntersectData CloneFields()
+        {
             IntersectData NewInst = new IntersectData();
             NewInst.Hit = Hit;
             NewInst.Travel = Travel;
             NewInst.IntersectPt = IntersectPt.Clone();
             NewInst.Body = Body;
 
+            if (BodySpecificData != null)
+                NewInst.BodySpecificData = BodySpecificData.Clone();
+
             if (Properties != null)
                 NewInst.Properties = Properties.Clone();
-            if(CastedRays!=null)
-                NewInst.CastedRays = CastedRays.Clone();
+            NewInst.CastedRays = CastedRays;
             return NewInst;
         }
 

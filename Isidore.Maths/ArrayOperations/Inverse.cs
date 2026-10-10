@@ -28,6 +28,10 @@ namespace Isidore.Maths
         /// <returns> Inverted matrix </returns>
         public static double[,] Inverse(double[,] m)
         {
+            if (m == null)
+                throw new ArgumentNullException("m");
+            if (m.GetLength(0) != m.GetLength(1))
+                throw new ArgumentException("The matrix must be square.", "m");
             int len = m.GetLength(0);
             int[] indxc = new int[len];
             int[] indxr = new int[len];

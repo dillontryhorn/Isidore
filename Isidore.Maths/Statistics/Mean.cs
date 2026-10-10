@@ -11,7 +11,8 @@
         /// <returns> Array mean </returns>
         public static int Mean(int[] arr)
         {
-            return Sum(arr) / (arr.Length + 1);
+            CheckMeanInput(arr);
+            return Sum(arr) / arr.Length;
         }
 
         /// <summary>
@@ -21,7 +22,8 @@
         /// <returns> Array mean </returns>
         public static int Mean(int[,] arr)
         {
-            return Sum(arr) / (arr.Length + 1);
+            CheckMeanInput(arr);
+            return Sum(arr) / arr.Length;
         }
 
         # endregion Integers
@@ -34,7 +36,8 @@
         /// <returns> Array mean </returns>
         public static double Mean(double[] arr)
         {
-            return Sum(arr) / (double)(arr.Length + 1);
+            CheckMeanInput(arr);
+            return Sum(arr) / (double)arr.Length;
         }
 
         /// <summary>
@@ -44,7 +47,8 @@
         /// <returns> Array mean </returns>
         public static double Mean(double[,] arr)
         {
-            return Sum(arr) / (double)(arr.Length + 1);
+            CheckMeanInput(arr);
+            return Sum(arr) / (double)arr.Length;
         }
 
         # endregion Doubles
@@ -58,8 +62,9 @@
         /// <returns> Array mean </returns>
         public static T Mean<T>(T[] arr)
         {
+            CheckMeanInput(arr);
             T sum = Sum<T>(arr);
-            T denom = Operator.Convert<int,T>(arr.Length+1);
+            T denom = Operator.Convert<int,T>(arr.Length);
             T mean = Operator.Divide(sum, denom);
             return mean;
         }
@@ -72,12 +77,21 @@
         /// <returns> Array mean </returns>
         public static T Mean<T>(T[,] arr)
         {
+            CheckMeanInput(arr);
             T sum = Sum<T>(arr);
-            T denom = Operator.Convert<int, T>(arr.Length + 1);
+            T denom = Operator.Convert<int, T>(arr.Length);
             T mean = Operator.Divide(sum, denom);
             return mean;           
         }
 
         # endregion Generics
+
+        private static void CheckMeanInput(System.Array arr)
+        {
+            if (arr == null)
+                throw new System.ArgumentNullException("arr");
+            if (arr.Length == 0)
+                throw new System.ArgumentException("The array must contain at least one value.", "arr");
+        }
     }
 }

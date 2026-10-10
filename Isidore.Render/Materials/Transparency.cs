@@ -69,9 +69,6 @@ namespace Isidore.Render
             // This saves some typing
             IntersectData iData = ray.IntersectData;
 
-            // indicates an interaction
-            bool interaction = false;
-
             // Tags the refractive index and wavelength from properties
             // Both will be replaced in the refractive rays
             int nTag = -1; // Tags the refractive index location
@@ -86,7 +83,16 @@ namespace Isidore.Render
             // Constructs the n1 refractive index 
             RefractiveIndex N1 = new RefractiveIndex();
             if (nTag > -1)
+            {
                 N1 = (RefractiveIndex)ray.Properties[nTag];
+                if (wTag > -1)
+                {
+                    Wavelength thisWlen = (Wavelength)ray.Properties[wTag];
+                    N1 = new RefractiveIndex(thisWlen.Value,
+                        Interpolate.Linear(thisWlen.Value, N1.Wavelength,
+                            N1.Coefficient), N1.Units);
+                }
+            }
             else if (wTag > -1)
             {
                 Wavelength thisWlen = (Wavelength)ray.Properties[wTag];
@@ -116,21 +122,21 @@ namespace Isidore.Render
                 // Wavelength being addressed
                 Wavelength wavelength = new Wavelength(wlens[idx]);
 
-                // Removes the refractive indices from the properties list 
-                if (nTag > -1)
+                // Remove original spectrum properties in descending index
+                // order so removing one does not shift the other index.
+                for (int pidx = ray.Properties.Count - 1; pidx >= 0; pidx--)
                 {
-                    transmitProp.RemoveAt(nTag);
-                    reflectProp.RemoveAt(nTag); 
+                    if (pidx == nTag || pidx == wTag)
+                    {
+                        transmitProp.RemoveAt(pidx);
+                        reflectProp.RemoveAt(pidx);
+                    }
                 }
 
                 // If there is a wavelength, removes it from the list 
                 // and adds a discrete wavelength
                 if(wTag > -1)
                 {
-                    // Removes full wavelength from the list
-                    transmitProp.RemoveAt(wTag);
-                    reflectProp.RemoveAt(wTag);
-
                     // Adds this discrete wavelength
                     transmitProp.Add(wavelength);
                     reflectProp.Add(wavelength);
@@ -166,7 +172,8 @@ namespace Isidore.Render
                     mat2 = n2[idx];
                     // Adds in the refractive indices for each ray
                     transmitProp.Add(N2);
-                    reflectProp.Add(N1);
+                    reflectProp.Add(new RefractiveIndex(
+                        new[] { wlens[idx] }, new[] { n1[idx] }, N1.Units));
                     surfNorm = dNorm;
                 }
 
@@ -210,7 +217,7 @@ namespace Isidore.Render
             }
 
             // returns interaction notification
-            return interaction;
+            return true;
         }
 
         /// <summary>
@@ -256,7 +263,7 @@ namespace Isidore.Render
         /// Deep-copy clones this instance
         /// </summary>
         /// <returns> Clone copy of this instance </returns>
-        new protected virtual Material CloneImp()
+        protected override Material CloneImp()
         {
             // Shallow copies from base
             Transparency newCopy = (Transparency)base.CloneImp();

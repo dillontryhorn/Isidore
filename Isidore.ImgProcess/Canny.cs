@@ -39,7 +39,10 @@ namespace Isidore.ImgProcess
             double[,] G1 = SobelTuple.Item3;
 
             double[] minMax = Stats.MinMax(Mag);
-            Mag = Operator.Divide(Mag, minMax[1]);
+            // An image without gradients has a zero maximum. Dividing by it
+            // would turn every magnitude into NaN.
+            if (minMax[1] > 0)
+                Mag = Operator.Divide(Mag, minMax[1]);
 
             // Step 3, 4, & 5: Gradient edge angle, 
             // Directional bins, & Edge Thinning
@@ -58,7 +61,7 @@ namespace Isidore.ImgProcess
                         if (Angle[idx0, idx1] >= -22.5 && 
                             Angle[idx0, idx1] < 22.5 || 
                             Angle[idx0, idx1] < -157.5 || 
-                            Angle[idx0, idx1] > 157.5)
+                            Angle[idx0, idx1] >= 157.5)
                         {
                             Dir[idx0, idx1] = 1;
                             if (Mag[idx0, idx1] > Mag[idx0 + 1, idx1] && 

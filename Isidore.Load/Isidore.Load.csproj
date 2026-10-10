@@ -54,7 +54,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Rhino3dmIO, Version=5.1.30000.14, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Rhino3dmIO.dll-x64-Windows.5.1.30000.25\lib\net40\Rhino3dmIO.dll</HintPath>
+      <HintPath>..\packages\Rhino3dmIO.dll-AnyCPU-Windows.5.1.30000.25\lib\net40\Rhino3dmIO.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />

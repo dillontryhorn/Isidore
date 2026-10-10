@@ -78,7 +78,7 @@ namespace Isidore.Render
         /// Deep-copy clones this instance
         /// </summary>
         /// <returns> Clone copy of this instance </returns>
-        new protected virtual Property CloneImp()
+        protected override Property CloneImp()
         {
             // Shallow copies from base
             PowerSpectrum newCopy = (PowerSpectrum)base.CloneImp();

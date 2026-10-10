@@ -37,7 +37,13 @@ namespace Isidore.ImgProcess
 
             Bitmap img = new Bitmap(xLen, yLen);
 
-            if (maxVal == 0.0) return img;
+            if (maxVal == 0.0)
+            {
+                for (int xIdx = 0; xIdx < xLen; xIdx++)
+                    for (int yIdx = 0; yIdx < yLen; yIdx++)
+                        img.SetPixel(xIdx, yIdx, Color.Black);
+                return img;
+            }
 
             for (int xIdx = 0; xIdx < xLen; xIdx++)
                 for (int yIdx = 0; yIdx < yLen; yIdx++)
@@ -53,7 +59,7 @@ namespace Isidore.ImgProcess
 
         /// <summary>
         /// Converts a 2D color array into a numeric array where 
-        /// each color is converted to gray scale
+        /// each color is converted to gray scale by averaging its RGB channels
         /// </summary>
         /// <typeparam name="T"> Data type </typeparam>
         /// <param name="color"> 2D color array </param>
@@ -65,8 +71,8 @@ namespace Isidore.ImgProcess
             T[,] gimg = new T[width, height];
             for (int k1 = 0; k1 < width; k1++)
                 for (int k2 = 0; k2 < height; k2++)
-                    gimg[k1, k2] = (T)Convert.ChangeType(color[k1, k2].R + 
-                        color[k1, k2].B + color[k1, k2].G, typeof(T));
+                    gimg[k1, k2] = (T)Convert.ChangeType((color[k1, k2].R +
+                        color[k1, k2].B + color[k1, k2].G) / 3.0, typeof(T));
             return gimg;
         }
 

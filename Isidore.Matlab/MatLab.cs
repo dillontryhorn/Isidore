@@ -114,14 +114,14 @@ namespace Isidore.Matlab
             double isThere = matlab.GetVariable("isThere", "base");
             if (isThere == 1)
             {
-                matlab.PutWorkspaceData(name + "Tmp", "base", Arr);
+                matlab.PutWorkspaceData(name + "Tmp", "base", tArr);
                 matlab.Execute(name + "=cat(3," + name + "," + 
                     name + "Tmp);");
                 matlab.Execute("clear " + name + "Tmp;");
             }
             else
             {
-                matlab.PutWorkspaceData(name, "base", Arr);
+                matlab.PutWorkspaceData(name, "base", tArr);
             }
             matlab.Execute("clear isThere");
         }
@@ -166,7 +166,7 @@ namespace Isidore.Matlab
         public static void Put<T>(MLApp.MLApp matlab, string name, 
             T[,,] Arr3D)
         {
-            Func<T, double> convert = Operator<T, double>.Convert;
+            Func<T, double> convert = NumericConverter<T>();
             int xLen = Arr3D.GetLength(0);
             int yLen = Arr3D.GetLength(1);
             int fLen = Arr3D.GetLength(2);
@@ -214,22 +214,22 @@ namespace Isidore.Matlab
         public static void Put<T>(MLApp.MLApp matlab, string name,
             T[,,,] Arr4D)
         {
-            Func < T, double> convert = Operator<T, double>.Convert;
+            Func<T, double> convert = NumericConverter<T>();
             int len0 = Arr4D.GetLength(0);
             int len1 = Arr4D.GetLength(1);
             int len2 = Arr4D.GetLength(2);
             int len3 = Arr4D.GetLength(3);
             string varStr = string.Format(
                 "{0}=zeros({1:d},{2:d},{3:d},{4:d});",
-                name, len0, len1, len2, len3);
+                name, len1, len0, len2, len3);
             matlab.Execute(varStr);
             for (int i3 = 0; i3 < len3; i3++)
                 for (int i2 = 0; i2 < len2; i2++)
                 {
-                    double[,] frame = new double[len0, len1];
+                    double[,] frame = new double[len1, len0];
                     for (int i1 = 0; i1 < len1; i1++)
                         for (int i0 = 0; i0 < len0; i0++)
-                            frame[i0, i1] = convert(Arr4D[i0, i1, i2, i3]);
+                            frame[i1, i0] = convert(Arr4D[i0, i1, i2, i3]);
                     // Pushes it to MatLab
                     matlab.PutWorkspaceData(name + "0", "base", frame);
                     string eStr = name + "(:,:," + i2 + "+1," + i3 + "+1)=" 
@@ -240,7 +240,8 @@ namespace Isidore.Matlab
         }
 
         /// <summary>
-        /// Retrieves an a 1D array from a MatLab secession
+        /// Retrieves a MATLAB row or column vector as a 1D array.
+        /// Empty arrays return an empty vector; non-vector matrices are rejected.
         /// </summary>
         /// <param name="matlab"> MatLab COM instance </param>
         /// <param name="variable"> Name of data in MatLab </param>
@@ -252,6 +253,10 @@ namespace Isidore.Matlab
             double[,] m = matlab.GetVariable(variable, workspace);
             int d0 = m.GetLength(0);
             int d1 = m.GetLength(1);
+            if (m.Length == 0)
+                return new double[0];
+            if (d0 != 1 && d1 != 1)
+                throw new ArgumentException("The MATLAB variable must be a row or column vector.", "variable");
 
             double[] v = null;
             switch (d0 > d1)
@@ -271,6 +276,15 @@ namespace Isidore.Matlab
             return v;
         }
 
+        // Higher-rank transfers are sent as double slices. Logical data has
+        // the same 0/1 representation even though bool has no numeric cast.
+        private static Func<T, double> NumericConverter<T>()
+        {
+            if (typeof(T) == typeof(bool))
+                return value => (bool)(object)value ? 1.0 : 0.0;
+            return Operator<T, double>.Convert;
+        }
+
         /// <summary>
         /// Reads a 2D array from a .mat file
         /// </summary>
@@ -279,16 +293,18 @@ namespace Isidore.Matlab
         /// <returns> Array of data extracted in MatLab </returns>
         public static double[,] Read(string fileName, string variable)
         {
-            DirectoryInfo di = new DirectoryInfo("./");
-            String strAppDir = di.FullName;
+            string fullPath = Path.GetFullPath(fileName).Replace("'", "''");
+            string variableName = variable.Replace("'", "''");
             MLApp.MLApp matlab = new MLApp.MLApp();
-            matlab.Execute("cd '" + strAppDir + "';");
-
-            double[,] m = matlab.GetVariable(variable, "base");
-
-            matlab.Quit();
-
-            return m;
+            try
+            {
+                matlab.Execute("load('" + fullPath + "','" + variableName + "');");
+                return matlab.GetVariable(variable, "base");
+            }
+            finally
+            {
+                matlab.Quit();
+            }
         }
     }
 }

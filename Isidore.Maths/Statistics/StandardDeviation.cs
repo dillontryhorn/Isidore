@@ -18,13 +18,8 @@ namespace Isidore.Maths
         /// <returns> Standard Deviation and mean of the data set </returns>
         public static double[] STD(double sum, double sumSq, int sampleSize)
         {
-            double dsize = (double)sampleSize;
-            // Mean and quadratic term
-            double mean = sum / dsize;
-            double quad = (sumSq - 2.0 * mean * sum) / dsize;
-            double var = quad + mean * mean;
-            double std = Math.Sqrt(var);
-            return new double[] { std, mean };
+            double[] stats = Variance(sum, sumSq, sampleSize);
+            return new double[] { Math.Sqrt(stats[0]), stats[1] };
         }
 
         /// <summary>
@@ -52,16 +47,7 @@ namespace Isidore.Maths
         /// <returns> Standard Deviation and mean of the data set </returns>
         public static double[] STD(double[] arr)
         {
-            double sum = 0, sumSq = 0; // Sum and sum of squares
-            // Steps through arrays
-            int len = arr.Length;
-            for (int idx = 0; idx < len; idx++)
-            {
-                sum += arr[idx];
-                sumSq += arr[idx] * arr[idx];
-            }
-
-            return STD(sum, sumSq, arr.Length);
+            return StandardDeviation(Variance(arr));
         }
 
         /// <summary>
@@ -85,20 +71,7 @@ namespace Isidore.Maths
         /// <returns> Standard Deviation and mean of the data set </returns>
         public static double[] STD(double[,] arr)
         {
-            double sum = 0, sumSq = 0; // Sum and sum of squares
-
-            int dim0 = arr.GetLength(0);
-            int dim1 = arr.GetLength(1);
-            for (int idx0 = 0; idx0 < dim0; idx0++)
-                for (int idx1 = 0; idx1 < dim1; idx1++)
-                {
-                    sum += arr[idx0, idx1];
-                    sumSq += arr[idx0, idx1] * arr[idx0, idx1];
-                }
-
-            double[] varStats = STD(sum, sumSq, arr.Length);
-
-            return STD(sum, sumSq, arr.Length);
+            return StandardDeviation(Variance(arr));
         }
 
         /// <summary>
@@ -123,27 +96,7 @@ namespace Isidore.Maths
         /// <returns> Standard Deviation of data marked with tag </returns>
         public static double[] STD(double[,] arr, bool[,] tag)
         {
-            // Checks that arr and tag are the same size
-            int dim0 = arr.GetLength(0);
-            int dim1 = arr.GetLength(1);
-            if (dim0 != tag.GetLength(0) || dim1 != tag.GetLength(1))
-                throw new System.ArgumentException(
-                    "Data and tag arrays must be the same size", "arr");
-
-            // Data needed for variance
-            double sum = 0, sumSq = 0;
-            int count = 0;
-            // Loops through array
-            for (int idx0 = 0; idx0 < dim0; idx0++)
-                for (int idx1 = 0; idx1 < dim1; idx1++)
-                    if (tag[idx0, idx1]) // If tags, add to sample
-                    {
-                        sum += arr[idx0, idx1];
-                        sum += arr[idx0, idx1] * arr[idx0, idx1];
-                        count++;
-                    }
-            // Calls Standard Deviation
-            return STD(sum, sumSq, count);
+            return StandardDeviation(Variance(arr, tag));
         }
 
         /// <summary>
@@ -157,7 +110,7 @@ namespace Isidore.Maths
         {
             // Converts to double and passes to Standard Deviation
             double[,] darr = Operator.Convert<T, double>(arr);
-            return STD(darr);
+            return STD(darr, tag);
         }
 
         /// <summary>
@@ -168,25 +121,7 @@ namespace Isidore.Maths
         /// <returns> Standard Deviation of data marked with tag </returns>
         public static double[] STD(double[] arr, bool[] tag)
         {
-            // Checks that arr and tag are the same size
-            int dim0 = arr.Length;
-            if (dim0 != tag.Length)
-                throw new System.ArgumentException(
-                    "Data and tag arrays must be the same size", "arr");
-
-            // Data needed for variance
-            double sum = 0, sumSq = 0;
-            int count = 0;
-            // Loops through array
-            for (int idx0 = 0; idx0 < dim0; idx0++)
-                if (tag[idx0]) // If tags, add to sample
-                {
-                    sum += arr[idx0];
-                    sum += arr[idx0] * arr[idx0];
-                    count++;
-                }
-            // Calls Standard Deviation
-            return STD(sum, sumSq, count);
+            return StandardDeviation(Variance(arr, tag));
         }
 
         /// <summary>
@@ -196,11 +131,29 @@ namespace Isidore.Maths
         /// <param name="arr"> Data array </param>
         /// <param name="tag"> Tag array </param>
         /// <returns> Standard Deviation of data marked with tag </returns>
-        public static double[] STD<T>(T[] arr, bool[,] tag)
+        public static double[] STD<T>(T[] arr, bool[] tag)
         {
             // Converts to double and passes to Standard Deviation
             double[] darr = Operator.Convert<T, double>(arr);
-            return STD(darr);
+            return STD(darr, tag);
+        }
+
+        /// <summary>
+        /// Compatibility overload for a vector with a rectangular tag array.
+        /// Tags are read in row-major order; use the bool[] overload for new code.
+        /// </summary>
+        /// <typeparam name="T"> Data type </typeparam>
+        /// <param name="arr"> Data array </param>
+        /// <param name="tag"> Tag array with the same total length </param>
+        /// <returns> Population standard deviation and mean of tagged data </returns>
+        public static double[] STD<T>(T[] arr, bool[,] tag)
+        {
+            return STD(arr, VectorTags(tag, arr.Length));
+        }
+
+        private static double[] StandardDeviation(double[] variance)
+        {
+            return new double[] { Math.Sqrt(variance[0]), variance[1] };
         }
     }
 }

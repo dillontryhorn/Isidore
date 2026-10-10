@@ -102,7 +102,8 @@ namespace Isidore.Models
         #region Methods
 
         /// <summary>
-        /// Clones this copy by performing a deep copy
+        /// Clones this point's coordinates and reference list. The referenced
+        /// points remain shared so the reference graph is preserved.
         /// </summary>
         /// <returns> Clone copy of this instance </returns>
         new public ReferencePoint Clone()
@@ -111,14 +112,15 @@ namespace Isidore.Models
         }
 
         /// <summary>
-        /// Deep-copy clone of this instance
+        /// Copies the point's coordinates and reference list while preserving
+        /// its runtime type and references to other points.
         /// </summary>
         /// <returns> Clone copy of this instance </returns>
         protected Point CloneImp()
         {
-            // Shallow copies from base
-            ReferencePoint newCopy = base.Clone() as ReferencePoint;
-            newCopy.ReferencePoints = ReferencePoints;
+            ReferencePoint newCopy = (ReferencePoint)MemberwiseClone();
+            newCopy.Comp = (double[])Comp.Clone();
+            newCopy.ReferencePoints = new List<Point>(ReferencePoints);
 
             return newCopy;
         }

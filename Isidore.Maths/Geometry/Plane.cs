@@ -155,10 +155,10 @@ namespace Isidore.Maths
 
             // if the travel distance is NaN, then the ray missed the plane
             // or hit the back face (If not allowed)
-            if (!double.IsNaN(iData.Item1))
-                intPt = Point.NaN();
+            if (double.IsNaN(iData.Item1))
+                intPt = Point.NaN(Plane.Point.Comp.Length);
             // Infinite intersection point    
-            else if(!double.IsPositiveInfinity(iData.Item1))
+            else if(double.IsPositiveInfinity(iData.Item1))
                 intPt = Point.PositiveInfinity(Plane.Point.Comp.Length);
             // Hit in real space
             else
@@ -194,8 +194,8 @@ namespace Isidore.Maths
 
             // Runs parallel to the plane
             if (cosIncAng == 0)
-                return new Tuple<double, double>(cosIncAng,
-                    double.PositiveInfinity);
+                return new Tuple<double, double>(double.PositiveInfinity,
+                    cosIncAng);
 
             // Distance to intersect
             double t = (ABC.Dot(new Normal(ray.Origin.Comp)) + D) / 

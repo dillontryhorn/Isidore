@@ -1,5 +1,8 @@
-﻿using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using Isidore.Maths;
 using Isidore.Render;
 
 namespace Isidore.Load
@@ -12,147 +15,143 @@ namespace Isidore.Load
         /// <summary>
         /// Loads a Wavefront Object as a polymesh
         /// </summary>
-        /// <param name="fileName"> File name of object file 
-        /// to load </param>
+        /// <param name="fileName"> File name of object file to load </param>
         /// <returns> Polymesh </returns>
         public static Polyshape Load(string fileName)
         {
-            string[] text = Text.Load(fileName);
-            return Read(text);
+            return Read(Text.Load(fileName));
         }
 
         /// <summary>
-        /// Reads Wavefront Object data contained as an array of strings
-        /// and returns a polymesh
+        /// Reads OBJ positions, normals, texture coordinates and faces.
+        /// Objects and groups become separate meshes; convex polygon faces
+        /// are triangulated as a fan. Material declarations are ignored.
         /// </summary>
-        /// <param name="lines"> String array containing the 
-        /// Object data </param>
+        /// <param name="lines"> String array containing the Object data </param>
         /// <returns> Polymesh </returns>
         public static Polyshape Read(string[] lines)
         {
-            // Mesh list to return
-            Polyshape meshes = new Polyshape();
+            if (lines == null)
+                throw new ArgumentNullException("lines");
 
-            // Temporal list
-            List<double[]> vList = new List<double[]>();
-            List<double[]> vtList = new List<double[]>();
-            List<double[]> vnList = new List<double[]>();
-            List<int[]> fList = new List<int[]>();
+            Polyshape meshes = new Polyshape();
+            // OBJ indices refer to file-wide tables, including across objects.
+            List<double[]> positions = new List<double[]>();
+            List<double[]> textures = new List<double[]>();
+            List<double[]> normals = new List<double[]>();
+            Vertices vertices = new Vertices();
+            List<int[]> facets = new List<int[]>();
+            Dictionary<Tuple<int, int, int>, int> vertexIndices =
+                new Dictionary<Tuple<int, int, int>, int>();
             string name = null;
 
-            // Book-keeping
-            int fOffset = 1; // Facet list numbering offset
-            string lastHeader = "";
-
-            // Cycles through each line in the files
-            for (int Idx = 0; Idx < lines.Length; Idx++)
+            for (int lineIndex = 0; lineIndex < lines.Length; lineIndex++)
             {
-                // Skips if line is less than three characters
-                if(lines[Idx].Length < 3)
+                string line = (lines[lineIndex] ?? "").Trim();
+                while (line.EndsWith("\\", StringComparison.Ordinal))
+                {
+                    if (lineIndex + 1 >= lines.Length)
+                        throw new FormatException("Missing OBJ continuation line.");
+                    line = line.Substring(0, line.Length - 1) + " " +
+                        (lines[++lineIndex] ?? "").Trim();
+                }
+                int comment = line.IndexOf('#');
+                if (comment >= 0)
+                    line = line.Substring(0, comment);
+                string[] fields = line.Split((char[])null,
+                    StringSplitOptions.RemoveEmptyEntries);
+                if (fields.Length == 0)
                     continue;
 
-                // Current line
-                string line = lines[Idx];
-
-                // Checks if there's a line break, if so, 
-                // adds the next line
-                if (line.EndsWith("\\"))
+                switch (fields[0])
                 {
-                    line = line.TrimEnd('\\',' ');
-                    line += lines[++Idx];
-                }
-
-                // Extracts the line header 
-                string header = line.Substring(0, 2); // Line header
-
-                // Makes a mesh if last header is a facet 
-                // and this one isn't
-                if(lastHeader == "f " && header!="f ")
-                {
-                    // Creates and adds the mesh to the list
-                    Mesh thisMesh = new Mesh(fList, vList, vnList, vtList);
-                    meshes.Add(thisMesh);
-                    thisMesh.Name = name;
-
-                    // Updating & resetting
-                    fOffset += vList.Count;
-                    vList = new List<double[]>();
-                    vtList = new List<double[]>();
-                    vnList = new List<double[]>();
-                    fList = new List<int[]>();
-                    name = null;
-                }
-
-                // Addresses each line
-                switch (header)
-                {
-                    // Object name identifies a new mesh
-                    case "o ": 
-                        name = line.Remove(0, 2);
+                    case "o":
+                    case "g":
+                        if (facets.Count > 0)
+                        {
+                            Mesh mesh = new Mesh(facets, vertices);
+                            mesh.Name = name;
+                            meshes.Add(mesh);
+                            facets = new List<int[]>();
+                            vertices = new Vertices();
+                            vertexIndices.Clear();
+                        }
+                        name = string.Join(" ", fields.Skip(1));
                         break;
-
-                    // Vertex position data (should be first)
-                    case "v ": 
-                        ParseDoubleAndAdd(ref vList, line.Substring(2));
+                    case "v":
+                        positions.Add(ParseCoordinates(fields, 3));
                         break;
-
-                    // Vertex normal
-                    case "vn": 
-                        ParseDoubleAndAdd(ref vnList, line.Substring(3));
-                        break;
-
-                    // Vertex texture
                     case "vt":
-                        ParseDoubleAndAdd(ref vtList, line.Substring(3));
+                        // A missing second texture coordinate is zero in OBJ.
+                        double[] uv = ParseCoordinates(fields, 1);
+                        textures.Add(new double[] { uv[0], uv.Length > 1 ? uv[1] : 0 });
                         break;
-
-                    // Facet (Should be last in list)
-                    case "f ":
-                        // Replaces missing texture indices with 0s
-                        line = line.Replace("//", "/0/");
-                        // Parse to usually 3 (v), 9 (v,vt,vn) values
-                        int[] ffull = line.Substring(2).Split(' ', '/').
-                            Select(t => int.Parse(t)).ToArray();
-                        // Finds the integers
-                        int inc = ffull.Length / 3;
-                        // Parses file and corrects the facet count
-                        int[] f = new int[3];
-                        for (int fIdx = 0; fIdx < 3; fIdx++)
-                            f[fIdx] = ffull[fIdx * inc] - fOffset;
-                        fList.Add(f);
+                    case "vn":
+                        normals.Add(ParseCoordinates(fields, 3));
                         break;
-
-                    // Ignores all other headers
+                    case "f":
+                        if (fields.Length < 4)
+                            throw new FormatException("An OBJ face needs at least three vertices.");
+                        int[] polygon = new int[fields.Length - 1];
+                        for (int corner = 1; corner < fields.Length; corner++)
+                        {
+                            string[] indices = fields[corner].Split('/');
+                            if (indices.Length > 3)
+                                throw new FormatException("Invalid OBJ face vertex.");
+                            int positionIndex = ResolveIndex(indices[0], positions.Count);
+                            int textureIndex = indices.Length > 1 && indices[1].Length > 0
+                                ? ResolveIndex(indices[1], textures.Count) : -1;
+                            int normalIndex = indices.Length > 2 && indices[2].Length > 0
+                                ? ResolveIndex(indices[2], normals.Count) : -1;
+                            Tuple<int, int, int> key = Tuple.Create(positionIndex,
+                                textureIndex, normalIndex);
+                            int vertexIndex;
+                            if (!vertexIndices.TryGetValue(key, out vertexIndex))
+                            {
+                                vertexIndex = vertices.Count;
+                                Vertex vertex = new Vertex(new Point(
+                                    positions[positionIndex].Take(3).ToArray()));
+                                if (normalIndex >= 0)
+                                    vertex.Normal = new Normal(normals[normalIndex].Take(3).ToArray());
+                                if (textureIndex >= 0)
+                                    vertex.UV = (double[])textures[textureIndex].Clone();
+                                vertices.Add(vertex);
+                                vertexIndices.Add(key, vertexIndex);
+                            }
+                            polygon[corner - 1] = vertexIndex;
+                        }
+                        for (int corner = 1; corner < polygon.Length - 1; corner++)
+                            facets.Add(new int[] { polygon[0], polygon[corner], polygon[corner + 1] });
+                        break;
                 }
-                lastHeader = header;
             }
 
-            // records the last mesh if there is no blank last line
-            if(fList != null)
+            if (facets.Count > 0)
             {
-                Mesh thisMesh = new Mesh(fList, vList, vnList, vtList);
-                meshes.Add(thisMesh);
-                thisMesh.Name = name;
+                Mesh mesh = new Mesh(facets, vertices);
+                mesh.Name = name;
+                meshes.Add(mesh);
             }
-
             return meshes;
         }
 
-        /// <summary>
-        /// Parses a string with double data into an array and adds it to 
-        /// the list reference
-        /// </summary>
-        /// <param name="list"> List to add onto </param>
-        /// <param name="line"> line to parse and add to the 
-        /// list </param>
-        /// <param name="delimiter"> Text used to delimit the 
-        /// string </param>
-        private static void ParseDoubleAndAdd(ref List<double[]> list, 
-            string line, char delimiter = ' ')
+        private static double[] ParseCoordinates(string[] fields, int minimum)
         {
-            double[] v = line.Split(delimiter).
-                    Select(t => double.Parse(t)).ToArray();
-            list.Add(v);
+            if (fields.Length <= minimum)
+                throw new FormatException("Incomplete OBJ coordinates.");
+            return fields.Skip(1).Select(value => double.Parse(value,
+                NumberStyles.Float, CultureInfo.InvariantCulture)).ToArray();
+        }
+
+        private static int ResolveIndex(string field, int count)
+        {
+            int index = int.Parse(field, CultureInfo.InvariantCulture);
+            // Positive indices are one-based; negative ones count backwards
+            // from the end of the table as it exists on the face's line.
+            int resolved = index > 0 ? index - 1 : count + index;
+            if (index == 0 || resolved < 0 || resolved >= count)
+                throw new FormatException("OBJ index is outside the available coordinate table.");
+            return resolved;
         }
     }
 }

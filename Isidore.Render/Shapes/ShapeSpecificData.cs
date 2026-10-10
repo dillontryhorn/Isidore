@@ -71,7 +71,7 @@ namespace Isidore.Render
         /// specific data types 
         /// </summary>
         /// <returns> Clone copy </returns>
-        new protected virtual BodySpecificData CloneImp()
+        protected override BodySpecificData CloneImp()
         {
             // Shallow copy
             ShapeSpecificData newCopy = (ShapeSpecificData)MemberwiseClone();

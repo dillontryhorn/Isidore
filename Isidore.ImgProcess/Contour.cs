@@ -1,5 +1,6 @@
 ﻿using System;
 using Isidore.Maths;
+using System.Collections.Generic;
 
 namespace Isidore.ImgProcess
 {
@@ -158,16 +159,20 @@ namespace Isidore.ImgProcess
 			while (inCont(img, xStart, yStart))
 				--xStart; // Moves back
 			xStart++;
+            xMin = xMax = xStart;
+            yMin = yMax = yStart;
 
 			// checks for more connected pixels
 			int x0 = xStart;
 			int y0 = yStart;
 			int dir = 0;
 			int x1, y1;
-			int lenChain = xLen * yLen; //To avoid running out of memory
-            int[] tChain = new int[lenChain];
-			int[] tx = new int[lenChain];
-			int[] ty = new int[lenChain];
+            // Thin contours revisit pixels, so their edge walk can be longer
+            // than the image's pixel count. Store only the visited boundary.
+            long lenChain = (long)xLen * yLen * 8;
+            List<int> tChain = new List<int>();
+            List<int> tx = new List<int>();
+            List<int> ty = new List<int>();
 
 			// Checks direction of neighboring pixel
 			for (; ; )
@@ -195,30 +200,25 @@ namespace Isidore.ImgProcess
 			for (; ; )
 			{
 				if (counter >= lenChain)
-					break;
+                    throw new InvalidOperationException("The contour boundary did not close.");
 
 				// Next point
 				int dir1 = Neighbor(img, x0, y0, dir0, out x1, out y1);
 
 				// Records direction
-				tx[counter] = x0;
-				ty[counter] = y0;
-				tChain[counter++] = dir1;
+                tx.Add(x0);
+                ty.Add(y0);
+                tChain.Add(dir1);
+                counter++;
 
 				// Checks if chain has closed
 				if (x0 == xStart && y0 == yStart && counter > 1)
 					if (dir1 == tChain[0] ||
 						 Math.Abs(dir1 - tChain[0]) == 1)
 					{
-						x = new int[counter];
-						y = new int[counter];
-						Chain = new int[counter];
-						for (int Idx = 0; Idx < counter; Idx++)
-						{
-							x[Idx] = tx[Idx];
-							y[Idx] = ty[Idx];
-							Chain[Idx] = tChain[Idx];
-						}
+                        x = tx.ToArray();
+                        y = ty.ToArray();
+                        Chain = tChain.ToArray();
 						return;
 					}
 

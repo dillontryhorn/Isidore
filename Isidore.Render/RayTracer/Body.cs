@@ -109,7 +109,7 @@ namespace Isidore.Render
         /// Deep-copy clones this instance
         /// </summary>
         /// <returns> Clone copy of this instance </returns>
-        new protected Item CloneImp()
+        protected override Item CloneImp()
         {
             Body newCopy = (Body)MemberwiseClone();
 

@@ -26,7 +26,7 @@ namespace Isidore.Maths
                 if (arr1.GetLength(idx) != arr2.GetLength(idx))
                     return 2;
             // At this point, the arrays are the same size
-            return 3;
+            return 0;
         }
     }
 }

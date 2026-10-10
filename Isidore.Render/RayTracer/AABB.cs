@@ -161,6 +161,11 @@ namespace Isidore.Render
         protected static bool InterAxis(double center, double halfLen,
             double compOrig, double compDir, ref double[] t)
         {
+            // A parallel ray intersects this slab only when its origin is
+            // inside it. Avoid dividing by zero at slab boundaries.
+            if (compDir == 0.0)
+                return Math.Abs(compOrig) <= halfLen;
+
             // Uses formulation in rtr pg.743 with some
             // modifications
 
@@ -202,7 +207,7 @@ namespace Isidore.Render
             Vector edge1 = (Vector)(v2 - v1);
             Vector normal = edge0.Cross(edge1);
             double d = -normal.Dot((Vector)v0);
-            if (!PlaneOverlap(normal, d)) return false;
+            if (!PlaneOverlapLocal(normal, d)) return false;
 
             // Check 3: Axis check
             Vector edge2 = (Vector)(v0 - v2);
@@ -303,6 +308,12 @@ namespace Isidore.Render
         /// <returns> Boolean flag: true = overlap </returns>
         public bool PlaneOverlap(Vector Normal, double D)
         {
+            // The slab extrema below are relative to the box center.
+            return PlaneOverlapLocal(Normal, D + Normal.Dot((Vector)centerPoint));
+        }
+
+        private bool PlaneOverlapLocal(Vector Normal, double D)
+        {
             // Derived from Moller's AABB-triangle overlap code
 
             Vector min = Vector.Zero(Normal.Comp.Length);
@@ -349,7 +360,7 @@ namespace Isidore.Render
         /// Deep-copy clones this instance
         /// </summary>
         /// <returns> Clone copy of this instance </returns>
-        new protected Item CloneImp()
+        protected override Item CloneImp()
         {
             AABB newCopy = (AABB)MemberwiseClone();
 

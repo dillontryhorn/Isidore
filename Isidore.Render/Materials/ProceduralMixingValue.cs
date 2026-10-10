@@ -283,12 +283,18 @@ namespace Isidore.Render
         /// Deep-copy clones this instance
         /// </summary>
         /// <returns> Clone copy of this instance </returns>
-        new protected ProceduralValue CloneImp()
+        protected override Material CloneImp()
         {
             // Shallow copies from base
             ProceduralMixingValue newCopy = (ProceduralMixingValue)base.CloneImp();
 
             // Deep-copies all data this is referenced by default
+            if (perturbNoise != null)
+                newCopy.perturbNoise = perturbNoise.Clone();
+            if (perturbVel != null)
+                newCopy.perturbVel = perturbVel.Clone();
+            if (perturbPoly != null)
+                newCopy.perturbPoly = perturbPoly.Clone();
 
             return newCopy;
         }

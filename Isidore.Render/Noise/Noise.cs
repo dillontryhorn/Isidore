@@ -353,6 +353,7 @@ namespace Isidore.Render
             Noise newCopy = (Noise)MemberwiseClone();
 
             // Deep copy
+            newCopy.noiseFunc = noiseFunc.Clone();
             newCopy.shift = shift.Clone() as Vector;
             newCopy.distFunc = distFunc.Clone() as Func<double, double>;
 

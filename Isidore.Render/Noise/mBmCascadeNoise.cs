@@ -119,7 +119,7 @@ namespace Isidore.Render
         /// Deep-copy clone of this instance
         /// </summary>
         /// <returns> Clone copy of this instance </returns>
-        new protected virtual fBmNoise CloneImp()
+        protected override Noise CloneImp()
         {
             // Shallow copies from base
             mBmCascadeNoise newCopy = base.CloneImp() as mBmCascadeNoise;

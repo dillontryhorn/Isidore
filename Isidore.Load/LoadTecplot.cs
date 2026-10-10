@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Globalization;
 using System.Text.RegularExpressions; // For using Regex
 
 namespace Isidore.Load
@@ -52,6 +53,8 @@ namespace Isidore.Load
         /// Current line being parsed
         /// </summary>
         private static string thisLine;
+        private static string tecplotDataLine;
+        private static readonly object tecplotSync = new object();
 
         /// <summary>
         /// Regular expression for identifying and parsing any double quotes
@@ -72,32 +75,29 @@ namespace Isidore.Load
             if (!File.Exists(fileStr))
                 throw new Exception("File does not exist.");
 
-            // Opens file for reading
-            textFile = File.OpenText(fileStr);
-
-            // Parses Header information
-            Tuple<string, List<string>, List<string>, int[], bool> items = TecplotHeader();
-            string title = items.Item1;
-            List<string> variables = items.Item2;
-            List<string> auxList = items.Item3;
-            int[] dataDims = items.Item4;
-            bool blockFormat = items.Item5;
-
-            // Parses data by format
-            double[][,,] data = null;
-            if (blockFormat)
-                data = assembleTecplotBlock(dataDims, variables.Count);
-            else
-                data = assembleTecplotPoint(dataDims, variables.Count);
-
-            // Builds and returns Tecplot structure
-            Data.Tecplot tplot = new Data.Tecplot();
-            tplot.Title = items.Item1;
-            tplot.Variables = items.Item2.ToArray();
-            tplot.AuxiliaryData = items.Item3.ToArray();
-            tplot.Data = data;
-
-            return tplot;
+            // Legacy helper methods share reader state, so file-based entry
+            // points serialize access to that state.
+            lock (tecplotSync)
+            {
+                textFile = File.OpenText(fileStr);
+                try
+                {
+                    Tuple<string, List<string>, List<string>, int[], bool> items = TecplotHeader();
+                    List<string> variables = items.Item2;
+                    int[] dataDims = items.Item4;
+                    bool blockFormat = items.Item5;
+                    double[][,,] data = blockFormat
+                        ? assembleTecplotBlock(dataDims, variables.Count)
+                        : assembleTecplotPoint(dataDims, variables.Count);
+                    Data.Tecplot tplot = new Data.Tecplot();
+                    tplot.Title = items.Item1;
+                    tplot.Variables = items.Item2.ToArray();
+                    tplot.AuxiliaryData = items.Item3.ToArray();
+                    tplot.Data = data;
+                    return tplot;
+                }
+                finally { textFile.Dispose(); }
+            }
         }
 
         /// <summary>
@@ -110,26 +110,37 @@ namespace Isidore.Load
         public static double[][,,] assembleTecplotBlock(int[] dimSize, 
             int valNum)
         {
+            if (dimSize == null || dimSize.Length != 3 || valNum <= 0 ||
+                dimSize[0] <= 0 || dimSize[1] <= 0 || dimSize[2] <= 0)
+                throw new FormatException("Tecplot requires positive dimensions and at least one variable.");
             // Makes new data array
             double[][,,] data = new double[valNum][,,];
             for(int idx=0; idx<valNum; idx++)
                 data[idx] = new double[dimSize[0],dimSize[1],dimSize[2]];
 
             // Indexers and counters
-            int totEl = dimSize[0]*dimSize[1]*dimSize[2]; // Total elements
+            int totEl = checked(dimSize[0]*dimSize[1]*dimSize[2]); // Total elements
+            int expectedCount = checked(totEl * valNum);
             int cnt = 0; // Data indices counter
             int inc2 = dimSize[0]*dimSize[1]; // Third axis increment value
             
             // Parses data
-            while(!textFile.EndOfStream)
+            while(tecplotDataLine != null || !textFile.EndOfStream)
             {
-                thisLine = textFile.ReadLine();
-                string[] theseStr = thisLine.Split(' ');
+                thisLine = tecplotDataLine ?? textFile.ReadLine();
+                tecplotDataLine = null;
+                int comment = thisLine.IndexOf('#');
+                if (comment >= 0)
+                    thisLine = thisLine.Substring(0, comment);
+                string[] theseStr = thisLine.Split(new char[] { ' ', '\t', ',' },
+                    StringSplitOptions.RemoveEmptyEntries);
                 for(int idx = 0; idx < theseStr.Length; idx++)
                 {
                     // Checks for empties
                     if(!String.IsNullOrEmpty(theseStr[idx]))
                     {
+                        if (cnt >= expectedCount)
+                            throw new FormatException("Tecplot contains more values than its declared dimensions.");
                         // Current data locations
                         int idx0 = cnt % dimSize[0]; // i
                         int idx1 = (cnt/dimSize[0]) % dimSize[1]; // j
@@ -137,7 +148,8 @@ namespace Isidore.Load
                         int idxV = cnt/totEl; // variable
 
                         // Assigns data
-                        double thisVal = double.Parse(theseStr[idx]);
+                        double thisVal = double.Parse(theseStr[idx].Replace('D', 'E').Replace('d', 'E'),
+                            NumberStyles.Float, CultureInfo.InvariantCulture);
                         data[idxV][idx0, idx1, idx2] = thisVal;
                     
                         // Increment counters
@@ -146,6 +158,9 @@ namespace Isidore.Load
                 }
                 
             }
+
+            if (cnt != expectedCount)
+                throw new FormatException("Tecplot contains fewer values than its declared dimensions.");
 
             return data;
         }
@@ -174,92 +189,81 @@ namespace Isidore.Load
             List<string>, int[], bool> TecplotHeader()
         {
 
-            // Output Data
-            // Plot title
             string titleStr = null;
-            // Variable list
             List<string> varList = new List<string>();
-            // Auxiliary data list
             List<string> auxDataList = new List<string>();
-            // Assumes a 3D array;
-            int[] arrSize = new int[3];
-            // Identifies the data format as either 
-            // point (false) or block (true) 
-            bool blockFormat = false; 
-
-            // Cycles through every line of the header data (only, we hope)
-            bool searching = true;
+            // Omitted ordered-zone dimensions have size one.
+            int[] arrSize = new int[] { 1, 1, 1 };
+            bool blockFormat = false;
             string auxStr = "auxdata";
-            // Looks for Zone identifier containing format data
             bool hitZone = false;
-
-            while(searching)
+            bool readingVariables = false;
+            tecplotDataLine = null;
+            while (true)
             {
-                // Reads the next line and converts it to lower case
                 thisLine = textFile.ReadLine();
+                if (thisLine == null)
+                    break;
+                thisLine = thisLine.Trim();
+                if (thisLine.Length == 0 || thisLine.StartsWith("#"))
+                    continue;
 
-                // If there is a blank line, a line starting DT=, 
-                // then we've entered the data section
-                if(String.IsNullOrEmpty(thisLine) || 
-                    thisLine.ToLower().Contains("dt="))
+                // Keep the first data line for the assembler rather than
+                // requiring a blank line or an optional DT declaration.
+                char first = thisLine[0];
+                if (hitZone && (char.IsDigit(first) || first == '+' ||
+                    first == '-' || first == '.'))
                 {
-                    searching = false;
+                    tecplotDataLine = thisLine;
+                    break;
                 }
-
-                // Writes auxdata text to an list
-                if (thisLine.ToLower().Contains(auxStr))
+                if (thisLine.IndexOf(auxStr, StringComparison.OrdinalIgnoreCase) >= 0)
                 {
-                    string str = (string)thisLine.Clone();
-                    int idx = str.IndexOf(auxStr, 
+                    int idx = thisLine.IndexOf(auxStr,
                         StringComparison.OrdinalIgnoreCase);
-                    auxDataList.Add(
-                        str.Substring(idx + auxStr.Length + 1));
+                    auxDataList.Add(thisLine.Substring(idx + auxStr.Length).Trim());
+                    continue;
                 }
-                else
+                if (thisLine.StartsWith("title", StringComparison.OrdinalIgnoreCase))
                 {
-                    // Plot title
-                    if (thisLine.ToLower().Contains("title"))
+                    MatchCollection matches = reg.Matches(thisLine);
+                    if (matches.Count == 0)
+                        throw new FormatException("The Tecplot title must be quoted.");
+                    titleStr = matches[0].Groups[1].Value;
+                }
+                if (thisLine.StartsWith("variables", StringComparison.OrdinalIgnoreCase))
+                {
+                    varList = retrieveVars();
+                    readingVariables = true;
+                    continue;
+                }
+                if (readingVariables && thisLine.StartsWith("\""))
+                {
+                    foreach (Match match in reg.Matches(thisLine))
+                        varList.Add(match.Groups[1].Value);
+                    continue;
+                }
+                readingVariables = false;
+                if (thisLine.StartsWith("zone", StringComparison.OrdinalIgnoreCase))
+                    hitZone = true;
+                if (hitZone)
+                {
+                    string[] dimensionNames = new string[] { "i", "j", "k" };
+                    for (int dimension = 0; dimension < 3; dimension++)
                     {
-                        // Parses first line since least one variable 
-                        // name will be there
-                        MatchCollection matches = reg.Matches(thisLine);
-                        titleStr = matches[0].ToString().Replace("\"", "");
+                        Match match = Regex.Match(thisLine, @"(?:^|[\s,])" +
+                            dimensionNames[dimension] + @"\s*=\s*([+-]?\d+)", RegexOptions.IgnoreCase);
+                        if (match.Success)
+                            arrSize[dimension] = int.Parse(match.Groups[1].Value,
+                                CultureInfo.InvariantCulture);
                     }
-
-                    // Variable names
-                    if (thisLine.ToLower().Contains("variables"))
-                    {
-                        varList = retrieveVars();
-                    }
-
-                    // Looks for zone data information
-                    if(thisLine.StartsWith("zone", 
-                        StringComparison.OrdinalIgnoreCase))
-                        hitZone = true;
-
-                    // I size
-                    if (hitZone && thisLine.ToLower().Contains(" i="))
-                    {
-                        arrSize[0] = retrieveInt(thisLine, "i=", ",");
-                    }
-
-                    // J size
-                    if (hitZone && thisLine.ToLower().Contains(" j="))
-                    {
-                        arrSize[1] = retrieveInt(thisLine, "j=", ",");
-                    }
-
-                    // K size
-                    if (hitZone && thisLine.ToLower().Contains(" k="))
-                    {
-                        arrSize[2] = retrieveInt(thisLine, "k=", ",");
-                    }
-
-                    // Block identifier
-                    if (hitZone && thisLine.ToLower().Contains("block"))
+                    if (thisLine.IndexOf("block", StringComparison.OrdinalIgnoreCase) >= 0)
                         blockFormat = true;
                 }
             }
+
+            if (!hitZone || varList.Count == 0)
+                throw new FormatException("Tecplot requires a zone and quoted variable names.");
 
             return Tuple.Create(titleStr, varList, auxDataList, arrSize, 
                 blockFormat);
@@ -305,17 +309,6 @@ namespace Isidore.Load
                 varList.Add(varStr);
             }
 
-            // Checks subsequent lines
-            // Looks for a double quote on the next line
-            while (textFile.Peek() == 34)
-            {
-                thisLine = textFile.ReadLine();
-                matches = reg.Matches(thisLine);
-                foreach (object item in matches)
-                    varList.Add(item.ToString().Replace("\"", ""));
-            }
-
-
             return varList;
         }
 
@@ -334,14 +327,12 @@ namespace Isidore.Load
             if (!File.Exists(fileStr))
                 throw new Exception("File does not exist.");
 
-            // Opens file for reading
-            textFile = File.OpenText(fileStr);
-
-            Tuple<string, List<string>, List<string>, int[], bool> header = TecplotHeader();
-
-            textFile.Close();
-
-            return header;
+            lock (tecplotSync)
+            {
+                textFile = File.OpenText(fileStr);
+                try { return TecplotHeader(); }
+                finally { textFile.Dispose(); }
+            }
         }
     }
 }

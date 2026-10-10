@@ -93,6 +93,8 @@ namespace Isidore.Render
             {
                 double factor = value / KeyWidths.CurrentValue;
                 KeyWidths.Scale(factor);
+                if (!double.IsNaN(CurrentTime))
+                    AdvanceToTime(CurrentTime, true);
             }
         }
 
@@ -114,6 +116,8 @@ namespace Isidore.Render
             {
                 double factor = value / KeyHeights.CurrentValue;
                 KeyHeights.Scale(factor);
+                if (!double.IsNaN(CurrentTime))
+                    AdvanceToTime(CurrentTime, true);
             }
         }
 
@@ -191,6 +195,7 @@ namespace Isidore.Render
                 CopyTransform(TransformTimeLine.CurrentValue);
             globalSurfaceNormal = LocalSurfaceNormal.
                 CopyTransform(TransformTimeLine.CurrentValue);
+            globalSurfaceNormal.Normalize();
             globalUpDirection = LocalUpDirection.
                 CopyTransform(TransformTimeLine.CurrentValue);
 
@@ -240,10 +245,12 @@ namespace Isidore.Render
             // Checks the ray's time and sets the shape to the same time
             // Probably does a similar check in each child class
             if (ray.Time != CurrentTime)
-                base.AdvanceToTime(ray.Time);
+                AdvanceToTime(ray.Time);
 
             // Incidence angle cosine
             double cosIncAng = -ray.Dir.Dot(globalSurfaceNormal);
+            if (cosIncAng == 0)
+                return false;
 
             // Back face check
             if (!IntersectBackFaces && cosIncAng < 0)
@@ -255,7 +262,9 @@ namespace Isidore.Render
 
             // If farther than current hit, too close, or in negative space, 
             // returns hit=false
-            if (t > ray.IntersectData.Travel || t < ray.MinimumTravel) return false;
+            if (double.IsNaN(t) || double.IsInfinity(t) ||
+                t > ray.IntersectData.Travel || t > ray.MaximumTravel ||
+                t < ray.MinimumTravel) return false;
 
             // Finds closest planar axis (A 2D vector)
             Vector M = (Vector)ray.Origin + ray.Dir * t;
@@ -308,7 +317,7 @@ namespace Isidore.Render
         /// Deep-copy clones this instance
         /// </summary>
         /// <returns> Clone copy of this instance </returns>
-        new protected Shape CloneImp()
+        protected override Item CloneImp()
         {
             Billboard newCopy = (Billboard)MemberwiseClone();
 

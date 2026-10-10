@@ -7,7 +7,7 @@ namespace Isidore_Tests
 {
     class TopLevel
     {
-        static void Main(string[] args)
+        static int Main(string[] args)
         {
             
             // Closes any open MatLab figure windows
@@ -52,6 +52,7 @@ namespace Isidore_Tests
             Console.WriteLine(passStr);
 
             //Aids.WaitForKey("\n" + passStr + "\nPress any key to exit");
+            return passed.TrueForAll(pass => pass) ? 0 : 1;
         }
     }
 
@@ -71,10 +72,9 @@ namespace Isidore_Tests
 
         public static double perErr(double val, double truth, double minVal = 0.000001)
         {
-            if (truth == 0 && val <= minVal)
-                return 0.0;
-            else
-                return Math.Abs((val - truth) / val);
+            if (truth == 0)
+                return Math.Abs(val) <= minVal ? 0.0 : double.PositiveInfinity;
+            return Math.Abs((val - truth) / truth);
         }
     }
 }

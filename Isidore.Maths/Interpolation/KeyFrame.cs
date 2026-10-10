@@ -66,6 +66,11 @@ namespace Isidore.Maths
         protected T currentValue;
 
         /// <summary>
+        /// Animation switch used for the cached interpolation state.
+        /// </summary>
+        protected bool currentAnimate;
+
+        /// <summary>
         /// Data type
         /// </summary>
         protected Type type;
@@ -96,7 +101,14 @@ namespace Isidore.Maths
             type = typeof(T);
             times = timeStamps ?? new double[] { 0.0 };
             values = valuesArray ?? new T[1]; // Makes a new one if null;
+            if (times.Length != values.Length || times.Length == 0)
+                throw new ArgumentException("Values and time stamps must have the same nonzero length.");
+            for (int idx = 0; idx < times.Length; idx++)
+                if (double.IsNaN(times[idx]) || double.IsInfinity(times[idx]) ||
+                    (idx > 0 && times[idx] <= times[idx - 1]))
+                    throw new ArgumentException("Time stamps must be finite and strictly increasing.", "timeStamps");
             Interpolation = interpolation;
+            currentValue = values[0];
 
             // This forces a first call in classes
             currentTime = Double.NaN;
@@ -123,37 +135,25 @@ namespace Isidore.Maths
         /// transformation </param>
         public void AddKeys(T newValue, double timeStamp)
         {
+            if (double.IsNaN(timeStamp) || double.IsInfinity(timeStamp))
+                throw new ArgumentException("Time stamps must be finite.", "timeStamp");
             // Casts to a list
             List<T> lVals = values.ToList();
             List<double> lTimes = times.ToList();
 
-            // If the time is greater than the last time line, then adds on
-            if (timeStamp > times.GetLowerBound(0))
+            int idx = Array.BinarySearch(times, timeStamp);
+            if (idx >= 0)
+                lVals[idx] = newValue;
+            else
             {
-                lVals.Add(newValue);
-                lTimes.Add(timeStamp);
-            }
-            else // Finds insert index
-            {
-                int idx = 0;
-                if (this.values.Length > 0)
-                    while (timeStamp > times[idx])
-                        idx++;
-                // if the time already exists, replaces
-                if (timeStamp == times[idx])
-                {
-                    lVals[idx] = newValue;
-                    lTimes[idx] = timeStamp;
-                }
-                else // otherwise, inserts
-                {
-                    lVals.Insert(idx, newValue);
-                    lTimes.Insert(idx, timeStamp);
-                }
+                idx = ~idx;
+                lVals.Insert(idx, newValue);
+                lTimes.Insert(idx, timeStamp);
             }
             // Cast back to an array
             values = lVals.ToArray();
             times = lTimes.ToArray();
+            RefreshCurrentValue();
         }
 
         /// <summary>
@@ -168,6 +168,7 @@ namespace Isidore.Maths
             lTimes.RemoveAt(idx);
             values = lVals.ToArray();
             times = lTimes.ToArray();
+            RefreshCurrentValue();
         }
 
         /// <summary>
@@ -201,7 +202,11 @@ namespace Isidore.Maths
 
             times = timePts.ToArray();
             values = mVals;
-            InterpolateToTime(thisCurrTime);
+            currentTime = double.NaN;
+            if (!double.IsNaN(thisCurrTime))
+                InterpolateToTime(thisCurrTime);
+            else
+                currentValue = values[0];
         }
 
         /// <summary>
@@ -210,7 +215,8 @@ namespace Isidore.Maths
         /// <param name="scalar"> scalar value to multiply </param>
         public void Scale(T scalar)
         {
-            Operator.Multiply(scalar, values);
+            values = Operator.Multiply(scalar, values);
+            RefreshCurrentValue();
         }
 
         /// <summary>
@@ -219,7 +225,23 @@ namespace Isidore.Maths
         /// <param name="scalar"> scalar value to add </param>
         public void Offset(T scalar)
         {
-            Operator.Add(scalar, values);
+            values = Operator.Add(scalar, values);
+            RefreshCurrentValue();
+        }
+
+        /// <summary>
+        /// Refreshes the cached value after a key changes.
+        /// </summary>
+        protected void RefreshCurrentValue()
+        {
+            double time = currentTime;
+            currentTime = double.NaN;
+            if (values.Length == 0)
+                currentValue = default(T);
+            else if (!double.IsNaN(time))
+                InterpolateToTime(time);
+            else
+                currentValue = values[0];
         }
 
         /// <summary>
@@ -228,12 +250,17 @@ namespace Isidore.Maths
         /// </summary>
         /// <param name="timePt"> time point to interpolate to </param>
         /// <returns> Interpolated transform </returns>
-        public T InterpolateToTime(double timePt)
+        public virtual T InterpolateToTime(double timePt)
         {
+            if (values.Length == 0)
+                throw new InvalidOperationException("There are no keys to interpolate.");
+            if (double.IsNaN(timePt))
+                throw new ArgumentException("The interpolation time must not be NaN.", "timePt");
             // Avoid redundancy by saving the current time's transform
-            if (timePt == currentTime)
+            if (timePt == currentTime && Animate == currentAnimate)
                 return currentValue;
             currentTime = timePt;
+            currentAnimate = Animate;
 
             // Outside bounds handler
             if (timePt <= times[0] || !Animate)

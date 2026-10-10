@@ -119,6 +119,8 @@ namespace Isidore.Render
             {
                 double factor = value / KeyUlength.CurrentValue;
                 KeyUlength.Scale(factor);
+                if (!double.IsNaN(CurrentTime))
+                    AdvanceToTime(CurrentTime, true);
             }
         }
 
@@ -140,6 +142,8 @@ namespace Isidore.Render
             {
                 double factor = value / KeyVlength.CurrentValue;
                 KeyVlength.Scale(factor);
+                if (!double.IsNaN(CurrentTime))
+                    AdvanceToTime(CurrentTime, true);
             }
         }
 
@@ -234,6 +238,7 @@ namespace Isidore.Render
             // Updates global plane values
             globalPoint = localPoint.CopyTransform(TransformTimeLine.CurrentValue);
             globalNormal = localNormal.CopyTransform(TransformTimeLine.CurrentValue);
+            globalNormal.Normalize();
             globalD = Maths.Plane.findD(globalNormal, globalPoint);
 
             // And texturing information
@@ -290,6 +295,7 @@ namespace Isidore.Render
 
             // Checks the distance, if longer or negative returns as a miss
             if (double.IsNaN(t) || t < ray.MinimumTravel || 
+                t > ray.MaximumTravel ||
                 t > ray.IntersectData.Travel) return false;
 
             // Corrects for back face angle of incidence 
@@ -318,6 +324,9 @@ namespace Isidore.Render
                 V -= Math.Floor(V);
             }
 
+            if (!getAlpha(U, V))
+                return false;
+
             // Intersect data
             ShapeSpecificData sData = new ShapeSpecificData(
                 globalNormal, cosIncAng, U, V);
@@ -342,7 +351,7 @@ namespace Isidore.Render
         /// Deep-copy clones this instance
         /// </summary>
         /// <returns> Clone copy of this instance </returns>
-        new protected Shape CloneImp()
+        protected override Item CloneImp()
         {
             Plane newCopy = (Plane)MemberwiseClone();
 

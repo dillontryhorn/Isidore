@@ -570,26 +570,7 @@ namespace Isidore.Maths
         /// <returns> Boolean equivalence </returns>
         public override bool Equals(System.Object obj)
         {
-            // If parameter is null return false
-            if (obj == null)
-                return false;
-
-            // If obj can't be cast to a vector, returns false
-            Point p = obj as Point;
-            if ((System.Object)p == null)
-                return false;
-
-            // Returns false if the point components are different sizes
-            if (Comp.Length != p.Comp.Length)
-                return false;
-
-            // Checks each value in each dimension
-            for (int idx = 0; idx < Comp.Length; idx++)
-                if (Comp[idx] != p.Comp[idx])
-                    return false;
-
-            // At this point, it's a match
-            return true;
+            return Equals(obj as Point);
         }
 
         /// <summary>
@@ -599,6 +580,8 @@ namespace Isidore.Maths
         /// <returns> Boolean equivalence </returns>
         public bool Equals(Point p)
         {
+            if (ReferenceEquals(this, p))
+                return true;
             // If v is null, return false
             if ((object)p == null)
                 return false;
@@ -623,7 +606,14 @@ namespace Isidore.Maths
         /// <returns> Object's hash code </returns>
         public override int GetHashCode()
         {
-            return base.GetHashCode();
+            // Match coordinate equality, which intentionally ignores w.
+            unchecked
+            {
+                int hash = 17;
+                foreach (double coordinate in Comp)
+                    hash = hash * 31 + coordinate.GetHashCode();
+                return hash;
+            }
         }
 
         /// <summary>

@@ -387,7 +387,7 @@ namespace Isidore.Maths
         /// <returns> Minimum vector </returns>
         public Vector Min(Vector v0, Vector v1)
         {
-            Vector v = new Vector(v0);
+            Vector v = v0.Clone();
             for (int idx = 0; idx < v0.Comp.Length; idx++)
                 v.Comp[idx] = (v.Comp[idx] > v1.Comp[idx]) ? 
                     v1.Comp[idx] : v.Comp[idx];
@@ -413,7 +413,7 @@ namespace Isidore.Maths
         /// <returns> Maximum vector </returns>
         public Vector Max(Vector v0, Vector v1)
         {
-            Vector v = new Vector(v0);
+            Vector v = v0.Clone();
             for (int idx = 0; idx < v0.Comp.Length; idx++)
                 v.Comp[idx] = (v.Comp[idx] < v1.Comp[idx]) ? 
                     v1.Comp[idx] : v.Comp[idx];
@@ -438,7 +438,7 @@ namespace Isidore.Maths
         /// <param name="trans"> Transformation instance </param>
         /// <param name="inverse"> Switch for using the inverse 
         /// transform </param>
-        public void Transform(Transform trans, bool inverse = false)
+        public virtual void Transform(Transform trans, bool inverse = false)
         {
             // retrieves the appropriate matrix
             double[,] m;
@@ -640,27 +640,7 @@ namespace Isidore.Maths
         /// <returns> Boolean equivalence </returns>
         public override bool Equals(System.Object obj)
         {
-            // If parameter is null return false
-            if (obj == null)
-                return false;
-
-            // If obj can't be cast to a vector, returns false
-            Vector v = obj as Vector;
-            if ((System.Object)v == null)
-                return false;
-
-            // If the point components are a different size, 
-            // returns false
-            if (this.Comp.Length != v.Comp.Length)
-                return false;
-
-            // Checks each value in each dimension
-            for (int idx = 0; idx < this.Comp.Length; idx++)
-                if (this.Comp[idx] != v.Comp[idx])
-                    return false;
-            
-            // At this point, it's a match
-            return true;
+            return Equals(obj as Vector);
         }
 
         /// <summary>
@@ -670,6 +650,8 @@ namespace Isidore.Maths
         /// <returns> Boolean equivalence </returns>
         public bool Equals(Vector v)
         {
+            if (ReferenceEquals(this, v))
+                return true;
             // If v is null, return false
             if ((object)v == null)
                 return false;
@@ -695,7 +677,13 @@ namespace Isidore.Maths
         /// <returns> Object's hash code </returns>
         public override int GetHashCode()
         {
-            return base.GetHashCode();
+            unchecked
+            {
+                int hash = 17;
+                foreach (double coordinate in Comp)
+                    hash = hash * 31 + coordinate.GetHashCode();
+                return hash;
+            }
         }
 
         /// <summary>

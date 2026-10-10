@@ -178,6 +178,22 @@ namespace Isidore.Render
             Shapes.RemoveAt(index);
         }
 
+        /// <summary>
+        /// Deep-copies the parent state without broadcasting its transform,
+        /// then copies components with their own animations intact.
+        /// </summary>
+        protected override Item CloneImp()
+        {
+            Polyshape copy = (Polyshape)MemberwiseClone();
+            copy.Shapes = new Shapes();
+            Shape shapeCopy = copy;
+            DeepCopyOverride(ref shapeCopy);
+            copy.Shapes = Shapes.Clone();
+            if (!double.IsNaN(CurrentTime))
+                copy.AdvanceToTime(CurrentTime, true);
+            return copy;
+        }
+
         #endregion Methods
     }
 }

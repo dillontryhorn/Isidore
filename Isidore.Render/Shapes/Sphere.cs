@@ -96,6 +96,8 @@ namespace Isidore.Render
             {
                 double factor = value / radius.CurrentValue;
                 radius.Scale(factor);
+                if (!double.IsNaN(CurrentTime))
+                    AdvanceToTime(CurrentTime, true);
             }
         }
 
@@ -164,6 +166,8 @@ namespace Isidore.Render
                 CopyTransform(TransformTimeLine.CurrentValue);
             globalPole = LocalPole.
                 CopyTransform(TransformTimeLine.CurrentValue);
+            globalEquator.Normalize();
+            globalPole.Normalize();
             Point currCenter = center.
                 CopyTransform(TransformTimeLine.CurrentValue);
             double currRad = radius.InterpolateToTime(now);
@@ -201,7 +205,9 @@ namespace Isidore.Render
             {
                 // There's a hit if the travel is greater than the minimum travel distance
                 // But less than the current travel
-                if(intRay.Item1[idx] > ray.MinimumTravel && intRay.Item1[idx] < ray.IntersectData.Travel)
+                if(intRay.Item1[idx] > ray.MinimumTravel &&
+                    intRay.Item1[idx] < ray.IntersectData.Travel &&
+                    intRay.Item1[idx] <= ray.MaximumTravel)
                 {
                     // If there's a valid, closer hit, then the UV coordinate is found
                     // Note that CalculateUV is superseded by an active alpha flag
@@ -212,13 +218,15 @@ namespace Isidore.Render
                         Vector Norm = (Vector)(intRay.Item3[idx] - sphere.Center);
                         Norm /= Radius;
                         // V akin to latitude
-                        double v = Math.Acos(-Norm.Dot(Pole));
-                        // U analogous to longitude
-                        double u = (Math.Acos(Equator.Dot(Norm) / Math.Sin(v)) / (2.0 * Math.PI));
+                        double v = Math.Acos(Math.Max(-1.0,
+                            Math.Min(1.0, -Norm.Dot(Pole))));
+                        // atan2 also defines a finite longitude at the poles,
+                        // where dividing by sin(latitude) is undefined.
+                        double u = Math.Atan2(Pole.Cross(Equator).Dot(Norm),
+                            Equator.Dot(Norm)) / (2.0 * Math.PI);
                         v /= Math.PI;
-                        // Flip if the dot product of the intersect normal with the cross product of the pole and equator < 0
-                        if (Pole.Cross(Equator).Dot(Norm) <= 0)
-                            u = 1 - u;
+                        if (u <= 0)
+                            u += 1;
                         U = u;
                         V = v;
                     }
@@ -269,7 +277,7 @@ namespace Isidore.Render
         /// Deep-copy clones this instance
         /// </summary>
         /// <returns> Clone copy of this instance </returns>
-        new protected Shape CloneImp()
+        protected override Item CloneImp()
         {
             Sphere newCopy = (Sphere)MemberwiseClone();
 
@@ -296,7 +304,8 @@ namespace Isidore.Render
             DeepCopyOverride(ref baseCast);
 
             //protected Maths.Sphere sphere;
-            copy.sphere = sphere.Clone();
+            if (sphere != null)
+                copy.sphere = sphere.Clone();
 
             //protected Point center;
             copy.center = center.Clone();

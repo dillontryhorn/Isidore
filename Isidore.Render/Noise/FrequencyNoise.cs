@@ -26,7 +26,7 @@ namespace Isidore.Render
             get { return minfreq; }
             set
             {
-                if (value < 0)
+                if (!(value > 0) || double.IsInfinity(value))
                     throw new ArgumentException(
                         "Frequency must be greater than 0", "minFreq");
                 else if (value > maxFreq)
@@ -42,7 +42,9 @@ namespace Isidore.Render
                 if (minfreq != maxfreq)
                 {
                     double exp = Math.Log(minfreq) / Math.Log(lacunarity);
-                    minfreq = Math.Pow(lacunarity, Math.Floor(exp));
+                    double anchored = Math.Pow(lacunarity, Math.Floor(exp));
+                    if (anchored > 0)
+                        minfreq = anchored;
                 }
 
                 // Updates the frequency sampling
@@ -59,7 +61,7 @@ namespace Isidore.Render
             get { return maxfreq; }
             set
             {
-                if (value < 0)
+                if (!(value > 0) || double.IsInfinity(value))
                     throw new ArgumentException(
                         "Frequency must be greater than 0", "maxFreq");
                 else if (value < minFreq)
@@ -86,7 +88,7 @@ namespace Isidore.Render
             get { return lacunarity; }
             set
             {
-                if (value < 1)
+                if (!(value > 1) || double.IsInfinity(value))
                     throw new ArgumentException(
                         "Lacunarity must be greater than 1", "Lacunarity");
                 lacunarity = value;
@@ -135,6 +137,9 @@ namespace Isidore.Render
             double offset = 0.0, Func<double, double> distFunc = null) :
             base(noiseFunc, shift, multiplier, offset, distFunc)
         {
+            if (!(lacunarity > 1) || double.IsInfinity(lacunarity))
+                throw new ArgumentException(
+                    "Lacunarity must be finite and greater than 1", "lacunarity");
             this.lacunarity = lacunarity;
             this.maxFreq = maxFreq;
             this.minFreq = minFreq;
@@ -238,8 +243,14 @@ namespace Isidore.Render
         private void CalcFrequencies()
         {
             List<double> freqsList = new List<double>();
-            for (double freq = minfreq; freq <= maxfreq; freq *= lacunarity)
+            for (double freq = minfreq; freq <= maxfreq;)
+            {
                 freqsList.Add(freq);
+                double next = freq * lacunarity;
+                if (next <= freq)
+                    throw new ArgumentException("Lacunarity must advance the frequency sampling.");
+                freq = next;
+            }
             freqs = freqsList.ToArray();
         }
         
@@ -258,12 +269,13 @@ namespace Isidore.Render
         /// specific data types 
         /// </summary>
         /// <returns> Clone copy </returns>
-        new protected virtual Noise CloneImp()
+        protected override Noise CloneImp()
         {
             // Shallow copies from base
             FrequencyNoise newCopy = base.CloneImp() as FrequencyNoise;
 
             // Deep copy
+            newCopy.freqs = (double[])freqs.Clone();
 
             return newCopy;
         }

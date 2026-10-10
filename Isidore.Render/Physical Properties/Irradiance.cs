@@ -34,7 +34,7 @@
         /// Deep-copy clones this instance
         /// </summary>
         /// <returns> Clone copy of this instance </returns>
-        new protected virtual Property CloneImp()
+        protected override Property CloneImp()
         {
             Irradiance newCopy = (Irradiance)base.CloneImp();
 
@@ -109,7 +109,7 @@
         /// Deep-copy clones this instance
         /// </summary>
         /// <returns> Clone copy of this instance </returns>
-        new protected virtual Irradiance CloneImp()
+        protected override Property CloneImp()
         {
             // Shallow copies from base
             SpectralIrradiance newCopy = (SpectralIrradiance)base.CloneImp();

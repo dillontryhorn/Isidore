@@ -186,6 +186,9 @@ namespace Isidore.Render
                 intersectID = new int[] { intersectIDIn };
             }
 
+            if (travel >= ray.IntersectData.Travel || travel > ray.MaximumTravel)
+                return false;
+
             // Checks to see if there's volumetric data on the ray
             VolumeSpecificData vDataRay = ray.IntersectData.BodySpecificData as
                 VolumeSpecificData;
@@ -247,6 +250,9 @@ namespace Isidore.Render
 
             // Point separations
             double dpts = center - rayOrig;
+
+            if (rayDir == 0.0)
+                return Math.Abs(dpts) <= halfLen;
 
             double tNear = (dpts - halfLen) / rayDir;
             double tFar = (dpts + halfLen) / rayDir;
@@ -409,7 +415,7 @@ namespace Isidore.Render
         /// Deep-copy clones this instance
         /// </summary>
         /// <returns> Clone copy of this instance </returns>
-        new protected Volume CloneImp()
+        protected override Item CloneImp()
         {
             Voxel newCopy = (Voxel)MemberwiseClone();
 
@@ -442,6 +448,9 @@ namespace Isidore.Render
 
             //private int[,] index;
             copy.index = (int[,])index.Clone();
+
+            copy.bbCenter = bbCenter.Clone();
+            copy.bbHalfLen = (double[])bbHalfLen.Clone();
         }
 
         #endregion Methods

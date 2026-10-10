@@ -87,6 +87,8 @@ namespace Isidore.Load
                 while(fields[last].StartsWith("+") || 
                     fields[last].StartsWith("*"))
                 {
+                    if (idx + 1 >= lines.Length)
+                        throw new FormatException("Missing NASTRAN continuation line.");
                     idx++; // Increments to next line
                     String[] nextFields = 
                         FileRef.NAS.Format.Separate(lines[idx]);
@@ -97,6 +99,7 @@ namespace Isidore.Load
                     nextList.RemoveAt(0);
                     fieldsList.AddRange(nextList);
                     fields = fieldsList.ToArray();
+                    last = fields.Length - 1;
                 }
 
                 // Grid point extraction

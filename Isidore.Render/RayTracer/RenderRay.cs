@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Isidore.Maths;
 
 namespace Isidore.Render
@@ -158,7 +159,7 @@ namespace Isidore.Render
         new public RenderRay CopyTransform(Transform trans, bool inverse = false)
         {
             RenderRay newRay = Clone();
-            newRay.Transform(trans);
+            newRay.Transform(trans, inverse);
             return newRay;
         }
 
@@ -204,13 +205,48 @@ namespace Isidore.Render
         /// <returns> Clone copy </returns>
         protected virtual RenderRay CloneImp()
         {
+            return Clone(NewCloneMap());
+        }
+
+        // Ray parents and casted children form a graph. Share one map while
+        // cloning it so cycles terminate and all links refer to copied rays.
+        internal RenderRay Clone(Dictionary<RenderRay, RenderRay> copies)
+        {
+            RenderRay existing;
+            if (copies.TryGetValue(this, out existing))
+                return existing;
+
             // Shallow copy
             RenderRay newCopy = (RenderRay)MemberwiseClone();
+            copies.Add(this, newCopy);
 
             // Deep copy
             DeepCopyOverride(ref newCopy);
 
+            if (ParentRay != null)
+                newCopy.ParentRay = ParentRay.Clone(copies);
+            if (IntersectData != null && IntersectData.CastedRays != null)
+                newCopy.IntersectData.CastedRays = IntersectData.CastedRays.Clone(copies);
+
             return newCopy;
+        }
+
+        internal static Dictionary<RenderRay, RenderRay> NewCloneMap()
+        {
+            return new Dictionary<RenderRay, RenderRay>(new RayReferenceComparer());
+        }
+
+        private sealed class RayReferenceComparer : IEqualityComparer<RenderRay>
+        {
+            public bool Equals(RenderRay left, RenderRay right)
+            {
+                return ReferenceEquals(left, right);
+            }
+
+            public int GetHashCode(RenderRay ray)
+            {
+                return RuntimeHelpers.GetHashCode(ray);
+            }
         }
 
         /// <summary>
@@ -227,10 +263,8 @@ namespace Isidore.Render
             if (Properties != null)
                 copy.Properties = Properties.Clone();
             
-            copy.IntersectData = IntersectData.Clone();
-
-            if (ParentRay != null)
-                copy.ParentRay = ParentRay.Clone();
+            if (IntersectData != null)
+                copy.IntersectData = IntersectData.CloneFields();
         }
 
         /// <summary>
@@ -266,11 +300,16 @@ namespace Isidore.Render
         /// <returns> Clone of list </returns>
         public RenderRays Clone()
         {
+            return Clone(RenderRay.NewCloneMap());
+        }
+
+        internal RenderRays Clone(Dictionary<RenderRay, RenderRay> copies)
+        {
             // Makes new list using the default constructor
             RenderRays nrays = new RenderRays();
 
             // Adds a clone of each list member
-            ForEach(ray => nrays.Add(ray.Clone()));
+            ForEach(ray => nrays.Add(ray.Clone(copies)));
 
             return nrays;
         }

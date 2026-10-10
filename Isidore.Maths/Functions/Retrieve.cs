@@ -37,6 +37,8 @@ namespace Isidore.Maths
                 // Descends through the member levels
                 for (int idx = 0; idx < fieldNames.Length; idx++)
                 {
+                    if (value == null)
+                        return default;
                     // Retrieves type, field, and property info
                     Type type = value.GetType();
                     FieldInfo finfo = type.GetField(fieldNames[idx]);
@@ -49,7 +51,7 @@ namespace Isidore.Maths
                         value = pinfo.GetValue(value);
                 }
 
-                return (Tout)value;
+                return value == null ? default : (Tout)value;
             }
         }
 

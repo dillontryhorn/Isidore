@@ -343,7 +343,8 @@ namespace Isidore.Render
             {
                 iD[idx] = new T[rays[idx].rays.Count];
                 for (int ridx = 0; ridx < rays[idx].rays.Count; ridx++)
-                    iD[idx][ridx] = iP[idx][ridx].GetData<T>(name);
+                    if (iP[idx][ridx] != null)
+                        iD[idx][ridx] = iP[idx][ridx].GetData<T>(name);
             }
             return iD;
         }
@@ -361,17 +362,12 @@ namespace Isidore.Render
         /// Deep-copy clones this instance
         /// </summary>
         /// <returns> Clone copy of this instance </returns>
-        new protected virtual Item CloneImp()
+        protected override Item CloneImp()
         {
             Projector newCopy = (Projector)MemberwiseClone();
 
             // Deep copy
             DeepCopyOverride(ref newCopy);
-
-            // If the current time has been set, then this should set
-            // the interpolated members in the copy
-            if (!double.IsNaN(CurrentTime))
-                newCopy.AdvanceToTime(CurrentTime, true);
 
             return newCopy;
         }
@@ -389,11 +385,19 @@ namespace Isidore.Render
 
             //protected internal RenderRay[] raysLocal;
             if (raysLocal != null)
-                copy.raysLocal = (RenderRay[])raysLocal.Clone();
+            {
+                copy.raysLocal = new RenderRay[raysLocal.Length];
+                for (int idx = 0; idx < raysLocal.Length; idx++)
+                    copy.raysLocal[idx] = raysLocal[idx].Clone();
+            }
 
             //protected internal RayTree[] rays;
             if (rays != null)
-                copy.rays = (RayTree[])rays.Clone();
+            {
+                copy.rays = new RayTree[rays.Length];
+                for (int idx = 0; idx < rays.Length; idx++)
+                    copy.rays[idx] = rays[idx].Clone();
+            }
 
         }
 

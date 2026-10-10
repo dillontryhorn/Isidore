@@ -24,19 +24,17 @@ namespace Isidore.Load
             }
 
             // Retrieves bitmap and extract image size
-            Bitmap rawImg = new Bitmap(FileName);
-            //Color[,] cImg = ConvertImg.toColor(rawImg);
-            // This is just a copy & paste from ImgProcess
-            // so we don't have to reference
-            int width = rawImg.Width;
-            int height = rawImg.Height;
-
-            Color[,] cImg = new Color[width, height];
-            for (int k1 = 0; k1 < width; k1++)
-                for (int k2 = 0; k2 < height; k2++)
-                    cImg[k1, k2] = rawImg.GetPixel(k1, k2);
-
-            return cImg;
+            using (Bitmap rawImg = new Bitmap(FileName))
+            {
+                // This copy avoids a dependency on ImgProcess.
+                int width = rawImg.Width;
+                int height = rawImg.Height;
+                Color[,] cImg = new Color[width, height];
+                for (int k1 = 0; k1 < width; k1++)
+                    for (int k2 = 0; k2 < height; k2++)
+                        cImg[k1, k2] = rawImg.GetPixel(k1, k2);
+                return cImg;
+            }
         }
     }
 }

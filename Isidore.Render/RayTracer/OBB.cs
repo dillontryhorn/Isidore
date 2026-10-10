@@ -103,7 +103,7 @@ namespace Isidore.Render
         /// Deep-copy clones this instance
         /// </summary>
         /// <returns> Clone copy of this instance </returns>
-        new protected AABB CloneImp()
+        protected override Item CloneImp()
         {
             OBB newCopy = (OBB)MemberwiseClone();
 
@@ -128,6 +128,8 @@ namespace Isidore.Render
 
             // private Vector[] sidesDir;
             copy.sideDir = (Vector[])sideDir.Clone();
+            for (int idx = 0; idx < sideDir.Length; idx++)
+                copy.sideDir[idx] = sideDir[idx].Clone();
         }
 
         #endregion Methods

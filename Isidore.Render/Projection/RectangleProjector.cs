@@ -76,7 +76,7 @@ namespace Isidore.Render
             double[] ang1 = new double[len1];
 
             // axis 0: positive increments
-            double axis0 = -0.5 * (len0 + 1);
+            double axis0 = -0.5 * (len0 - 1);
             for (int idx = 0; idx < len0; idx++)
             {
                 pos0[idx] = axis0 * lenPix0;
@@ -84,7 +84,7 @@ namespace Isidore.Render
             }
 
             // axis 1: positive increments
-            double axis1 = -0.5 * (len1 + 1);
+            double axis1 = -0.5 * (len1 - 1);
             for (int idx = 0; idx < len1; idx++)
             {
                 pos1[idx] = axis1 * lenPix1;
@@ -387,6 +387,18 @@ namespace Isidore.Render
             return LocalRay(Idx1 + Idx0 * Pos1.Length);
         }
 
+        /// <summary>
+        /// Deep-copies the pixel axes as well as the projector's ray trees.
+        /// </summary>
+        protected override Item CloneImp()
+        {
+            RectangleProjector copy = (RectangleProjector)base.CloneImp();
+            copy.axis0pos = (double[])axis0pos.Clone();
+            copy.axis1pos = (double[])axis1pos.Clone();
+            copy.axis0ang = (double[])axis0ang.Clone();
+            copy.axis1ang = (double[])axis1ang.Clone();
+            return copy;
+        }
 
         # endregion Methods
     }

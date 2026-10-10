@@ -136,7 +136,7 @@ namespace Isidore.Render
         /// Deep-copy clones this instance
         /// </summary>
         /// <returns> Clone copy of this instance </returns>
-        new protected virtual Texture CloneImp()
+        protected override Texture CloneImp()
         {
             // Shallow copies from base
             PerturbedTexture newCopy = base.CloneImp() as PerturbedTexture;

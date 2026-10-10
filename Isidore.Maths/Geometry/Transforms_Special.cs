@@ -24,24 +24,18 @@ namespace Isidore.Maths
 
             m[0, 0] = Axis.Comp[0] * Axis.Comp[0] + 
                 (1 - Axis.Comp[0] * Axis.Comp[0]) * cosA;
-            m[0, 1] = Axis.Comp[0] * Axis.Comp[1] + 
-                (1 - cosA) - Axis.Comp[2] * sinA;
-            m[0, 2] = Axis.Comp[0] * Axis.Comp[2] + 
-                (1 - cosA) + Axis.Comp[1] * sinA;
+            m[0, 1] = Axis.Comp[0] * Axis.Comp[1] * (1 - cosA) - Axis.Comp[2] * sinA;
+            m[0, 2] = Axis.Comp[0] * Axis.Comp[2] * (1 - cosA) + Axis.Comp[1] * sinA;
             m[0, 3] = 0;
 
-            m[1, 0] = Axis.Comp[0] * Axis.Comp[1] + 
-                (1 - cosA) + Axis.Comp[2] * sinA;
+            m[1, 0] = Axis.Comp[0] * Axis.Comp[1] * (1 - cosA) + Axis.Comp[2] * sinA;
             m[1, 1] = Axis.Comp[1] * Axis.Comp[1] + 
                 (1 - Axis.Comp[1] * Axis.Comp[1]) * cosA;
-            m[1, 2] = Axis.Comp[1] * Axis.Comp[2] + 
-                (1 - cosA) - Axis.Comp[0] * sinA;
+            m[1, 2] = Axis.Comp[1] * Axis.Comp[2] * (1 - cosA) - Axis.Comp[0] * sinA;
             m[1, 3] = 0;
 
-            m[2, 0] = Axis.Comp[0] * Axis.Comp[2] + 
-                (1 - cosA) - Axis.Comp[1] * sinA;
-            m[2, 1] = Axis.Comp[1] * Axis.Comp[2] + 
-                (1 - cosA) + Axis.Comp[0] * sinA;
+            m[2, 0] = Axis.Comp[0] * Axis.Comp[2] * (1 - cosA) - Axis.Comp[1] * sinA;
+            m[2, 1] = Axis.Comp[1] * Axis.Comp[2] * (1 - cosA) + Axis.Comp[0] * sinA;
             m[2, 2] = Axis.Comp[2] * Axis.Comp[2] + 
                 (1 - Axis.Comp[2] * Axis.Comp[2]) * cosA;
             m[2, 3] = 0;

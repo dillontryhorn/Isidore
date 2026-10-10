@@ -61,7 +61,7 @@ namespace Isidore.Load
         /// Parses a text entry using a string list demarcation 
         /// (Can be more than one string).  If not provided, all newlines 
         /// and carriage combinations are used as a delimiters (i.e.
-        /// Delimiters = new string[] { "\n", "\r\n", "\n\r" };
+        /// Delimiters = new string[] { "\r\n", "\n\r", "\n", "\r" };
         /// </summary>
         /// <param name="Line"> text line </param>
         /// <param name="Delimiters"> strings to us as 
@@ -72,7 +72,7 @@ namespace Isidore.Load
             null)
         {
             string[] delimiters = Delimiters ?? 
-                new string[] { "\n", "\r\n", "\n\r" };
+                new string[] { "\r\n", "\n\r", "\n", "\r" };
             return Line.Split(delimiters, StringSplitOptions.None);
         }
     }

@@ -32,7 +32,18 @@ namespace Isidore.Models
         /// <summary>
         /// Turbulence time step
         /// </summary>
-        public double TimeStep{ get; set; }
+        public double TimeStep
+        {
+            get { return timeStep; }
+            set
+            {
+                if (double.IsNaN(value) || double.IsInfinity(value) || value <= 0)
+                    throw new ArgumentOutOfRangeException("TimeStep",
+                        "The time step must be finite and greater than zero.");
+                timeStep = value;
+            }
+        }
+        private double timeStep;
 
         /// <summary>
         /// Rate of charge in coherence
@@ -77,7 +88,7 @@ namespace Isidore.Models
             Noise noiseMagnitude=null, Noise noiseDirection=null, 
             Noise noiseSpeed=null, Transform noiseTransform=null, 
             double timestep = 1e-6, double coherenceRate = 0): 
-            base(position)
+            base(position ?? new Point())
         {
             NoiseMagnitude = noiseMagnitude ?? new fBmNoise();
             NoiseDirection = noiseDirection ?? new fBmNoise();
@@ -87,7 +98,7 @@ namespace Isidore.Models
             CoherenceRate = coherenceRate;
 
             noisePosition = new KeyFrame<Point>(
-                Zero(position.Comp.Length), 0);
+                Zero(Comp.Length), 0);
         }
 
         #endregion Constructor
@@ -101,6 +112,8 @@ namespace Isidore.Models
         /// <returns></returns>
         public double GetVal(Point coord, double now)
         {
+            if (double.IsNaN(now) || double.IsInfinity(now))
+                throw new ArgumentOutOfRangeException("now", "Evaluation time must be finite.");
             // Adds points beyond the last time
             //if (noisePosition.Times.Length == 0 || now > LastTime)
             if (now > LastTime)
@@ -131,8 +144,11 @@ namespace Isidore.Models
         private void ExtendTimeline(double newLimit)
         {
             // Adds each additional time up-to & including the new limit
-            while (LastTime <= newLimit)
+            while (LastTime < newLimit)
             {
+                double nextTime = LastTime + TimeStep;
+                if (double.IsInfinity(nextTime) || nextTime <= LastTime)
+                    throw new InvalidOperationException("The time step cannot advance this timeline.");
                 // Using N + t space to determine what the next
                 // radial length and angle should be
                 double speed = 0, Dir = 0;
@@ -150,16 +166,16 @@ namespace Isidore.Models
                 double L = -speed * TimeStep; // Distance traveled 
                 double dX = L * Math.Cos(Dir); // X position
                 double dY = L * Math.Sin(Dir); // Y position
-                Point dPos = new Point(dX, dY, 0); // Point in sensor space
+                Vector dPos = new Vector(dX, dY, 0); // Displacement in sensor space
 
                 // Transforms the offset point to local turbulence space
                 dPos.Transform(noiseTransform);
 
                 // Adds this delta to the last position in the random walk
-                Point walkPt = noisePosition.Values.Last() + dPos;
+                Point walkPt = noisePosition.Values.Last() + dPos.Comp;
 
                 // Adds the position to the key-frame
-                noisePosition.AddKeys(walkPt, LastTime + TimeStep);
+                noisePosition.AddKeys(walkPt, nextTime);
             }
         }
 
@@ -186,7 +202,10 @@ namespace Isidore.Models
             newCopy.NoiseDirection = NoiseDirection.Clone();
             newCopy.NoiseSpeed = NoiseSpeed.Clone();
             newCopy.noiseTransform = noiseTransform.Clone();
-            newCopy.noisePosition = noisePosition.Clone();
+            newCopy.noisePosition = new KeyFrame<Point>(
+                noisePosition.Values.Select(point => point.Clone()).ToArray(),
+                (double[])noisePosition.Times.Clone(), noisePosition.Interpolation);
+            newCopy.noisePosition.Animate = noisePosition.Animate;
 
             return newCopy;
         }

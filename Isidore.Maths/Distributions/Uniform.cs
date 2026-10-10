@@ -47,8 +47,18 @@ namespace Isidore.Maths
         public static Array Uniform<T>(int[] lengths, T value)
         {
             Array arr = Array.CreateInstance(typeof(T), lengths);
+            int[] indices = new int[lengths.Length];
             for (long idx = 0; idx < arr.LongLength; idx++)
-                arr.SetValue(value, idx);
+            {
+                arr.SetValue(value, indices);
+                // Rectangular arrays require one index for every dimension.
+                for (int dimension = indices.Length - 1; dimension >= 0; dimension--)
+                {
+                    if (++indices[dimension] < lengths[dimension])
+                        break;
+                    indices[dimension] = 0;
+                }
+            }
             return arr;
         }
     }

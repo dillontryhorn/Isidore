@@ -1,5 +1,8 @@
 ﻿namespace Isidore.Load
 {
+    using System;
+    using System.Globalization;
+
     /// <summary>
     /// Provides information on a file format
     /// </summary>
@@ -75,8 +78,8 @@
                 public static fType WhichFormat(string data)
                 {
                     // grabs the mnemonic data from columns 0-7
-                    string mnen = data.Substring(0, 8).TrimEnd(' ');
-                    if (mnen.EndsWith(",")) return fType.Free;
+                    string mnen = data.Substring(0, Math.Min(8, data.Length)).TrimEnd(' ');
+                    if (data.IndexOf(',') >= 0) return fType.Free;
                     else if (mnen.EndsWith("*")) return fType.HighPrec;
                     else return fType.Fixed;
                 }
@@ -188,21 +191,19 @@
                 /// <returns> Parsed number </returns>
                 public static double parseAsDouble(string str)
                 {
+                    str = str.Trim().Replace('D', 'E').Replace('d', 'E');
                     double val;
-                    // Regular System parse
-                    try
-                    {
-                        val = double.Parse(str);
-                    }
-                    // Some NAS formats will write small exponentials 
-                    // without the "E" text, this inserts it
-                    catch
-                    {
-                        int ind = str.LastIndexOf("-");
-                        string newStr = str.Insert(ind, "E");
-                        val = double.Parse(newStr);
-                    }
-                    return val;
+                    if (double.TryParse(str, NumberStyles.Float,
+                        CultureInfo.InvariantCulture, out val))
+                        return val;
+
+                    // NASTRAN also omits E in signed exponents, including
+                    // positive exponents. Do not mistake a leading sign for one.
+                    int ind = Math.Max(str.LastIndexOf('-'), str.LastIndexOf('+'));
+                    if (ind > 0)
+                        str = str.Insert(ind, "E");
+                    return double.Parse(str, NumberStyles.Float,
+                        CultureInfo.InvariantCulture);
                 }
             }
 

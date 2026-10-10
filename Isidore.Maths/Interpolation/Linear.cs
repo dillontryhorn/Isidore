@@ -416,32 +416,46 @@ namespace Isidore.Maths
         public static double Linear(double idxPt0, double idxPt1, 
             double[] arrPts0, double[] arrPts1, double[,] arr)
         {
+            if (arrPts0.Length != arr.GetLength(0) || arrPts1.Length != arr.GetLength(1))
+                throw new ArgumentException("Coordinates must match the data dimensions.", "arr");
             // Finds current location in the time history
             // First axis
-            Tuple<int, double> place0 = PlaceVal(idxPt0, arrPts0);
+            Tuple<int, double> place0 = LinearInterval(idxPt0, arrPts0);
             int Idx0 = place0.Item1; // Lower bound index
             double fac0 = place0.Item2; // Unit interpolation factor
             // Second axis
-            Tuple<int, double> place1 = PlaceVal(idxPt1, arrPts1);
+            Tuple<int, double> place1 = LinearInterval(idxPt1, arrPts1);
             int Idx1 = place1.Item1; // Lower bound index
             double fac1 = place1.Item2; // Unit interpolation factor
 
-            // Checks that the point is inside the array
-            if(double.IsInfinity(fac0) || double.IsInfinity(fac1))
-                throw new System.ArgumentException(
-                    "The point must be within the array bounds.", "arr");
+            int upper0 = Math.Min(Idx0 + 1, arr.GetLength(0) - 1);
+            int upper1 = Math.Min(Idx1 + 1, arr.GetLength(1) - 1);
 
             // First axis interpolation
             // 1st point
             double val = arr[Idx0, Idx1] * (1.0 - fac0) * (1.0 - fac1);
             // 2nd point
-            val += arr[Idx0, Idx1 + 1] * (1.0 - fac0) * fac1;
+            val += arr[Idx0, upper1] * (1.0 - fac0) * fac1;
             // 3rd point
-            val += arr[Idx0 + 1, Idx1] * fac0 * (1.0 - fac1);
+            val += arr[upper0, Idx1] * fac0 * (1.0 - fac1);
             // 4th point
-            val += arr[Idx0 + 1, Idx1 + 1] * fac0 * fac1;
+            val += arr[upper0, upper1] * fac0 * fac1;
 
             return val;
+        }
+
+        // Bilinear interpolation includes its bounding edges, whereas
+        // PlaceVal uses infinity to signal clamping in the 1D overloads.
+        private static Tuple<int, double> LinearInterval(double point, double[] coordinates)
+        {
+            if (coordinates.Length == 0 || double.IsNaN(point) ||
+                point < coordinates[0] || point > coordinates[coordinates.Length - 1])
+                throw new ArgumentException("The point must be within the array bounds.", "point");
+            if (coordinates.Length == 1 || point == coordinates[0])
+                return Tuple.Create(0, 0.0);
+            if (point == coordinates[coordinates.Length - 1])
+                return Tuple.Create(coordinates.Length - 2, 1.0);
+            return PlaceVal(point, coordinates);
         }
 
         /// <summary>

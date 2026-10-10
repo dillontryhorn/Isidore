@@ -78,7 +78,7 @@ namespace Isidore.Render
         /// <param name="tScale"> Scale factor </param>
         public void ScaleMap(double tScale)
         {
-            Operator.Multiply(tScale, map);
+            map = Operator.Multiply(tScale, map);
         }
 
         /// <summary>
@@ -182,7 +182,7 @@ namespace Isidore.Render
         /// </summary>
         public void reset()
         {
-            map = new double[map.GetLength(0), map.GetLength(0)];
+            map = new double[1, 1];
         }
 
         /// <summary>
@@ -198,7 +198,7 @@ namespace Isidore.Render
         /// Deep-copy clones this instance
         /// </summary>
         /// <returns> Clone copy of this instance </returns>
-        new protected virtual Texture CloneImp()
+        protected override Texture CloneImp()
         {
             // Shallow copies from base
             MapTexture newCopy = (MapTexture)base.CloneImp();

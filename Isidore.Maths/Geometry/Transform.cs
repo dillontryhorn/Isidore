@@ -116,6 +116,7 @@ namespace Isidore.Maths
         public Transform(int N)
         {
             m = Distribution.Identity<double>(N);
+            im = Distribution.Identity<double>(N);
         }
 
         # endregion Constructors

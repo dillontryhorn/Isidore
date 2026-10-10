@@ -74,7 +74,7 @@ namespace Isidore.Render
         /// Deep-copy clones this instance
         /// </summary>
         /// <returns> Clone copy of this instance </returns>
-        new protected Body CloneImp()
+        protected override Item CloneImp()
         {
             Volume newCopy = (Volume)MemberwiseClone();
 

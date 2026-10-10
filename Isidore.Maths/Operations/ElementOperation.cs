@@ -24,6 +24,8 @@ namespace Isidore.Maths
             Tout[,] result = new Tout[dim0, dim1];
 
             // Partitions source array by columns
+            if (result.Length == 0)
+                return result;
             OrderablePartitioner<Tuple<int, int>> part = Partitioner.Create(0, dim0); 
             Parallel.ForEach(part, (range) =>
             {
@@ -65,6 +67,8 @@ namespace Isidore.Maths
             Tout[,] result = new Tout[dim0, dim1];
 
             // Partitions source array by columns
+            if (result.Length == 0)
+                return result;
             OrderablePartitioner<Tuple<int, int>> part = Partitioner.Create(0, dim0); 
             Parallel.ForEach(part, (range) =>
             {
@@ -100,6 +104,8 @@ namespace Isidore.Maths
             Tout[,] result = new Tout[dim0, dim1];
 
             // Partitions source array by columns
+            if (result.Length == 0)
+                return result;
             OrderablePartitioner<Tuple<int, int>> part = Partitioner.Create(0, dim0); 
             Parallel.ForEach(part, (range) =>
             {
@@ -130,6 +136,8 @@ namespace Isidore.Maths
             Tout[,] result = new Tout[dim0, dim1];
 
             // Partitions source array by columns
+            if (result.Length == 0)
+                return result;
             OrderablePartitioner<Tuple<int, int>> part = Partitioner.Create(0, dim0); 
             Parallel.ForEach(part, (range) =>
             {

@@ -13,7 +13,8 @@ namespace Isidore.Matlab
         /// <summary>
         /// Extracts a subfield value from a class or structure. Any 
         /// value will be returned as a 1D array, even for a single element. 
-        /// Extracted values are limited to 1D arrays or less.
+        /// Extracted values are limited to 1D arrays or less. An empty member
+        /// path extracts the input value itself.
         /// </summary>
         /// <typeparam name="T"> Input data type </typeparam>
         /// <typeparam name="Tout"> Output data array </typeparam>
@@ -24,46 +25,21 @@ namespace Isidore.Matlab
         public static Tout[] GetValue<T, Tout>(T ival, string[] fieldnames)
         {
 
-            // Initialize a component array
-            Tout[] arr;
-
-            // If the value is not present then steps to next element
-            if (ival == null)
+            if (fieldnames == null)
+                throw new ArgumentNullException("fieldnames");
+            object value = ival;
+            for (int idx = 0; idx < fieldnames.Length; idx++)
             {
-                arr = new Tout[] { };
-                return arr;
-            }
-
-            // Descends down the fields
-            Type type = ival.GetType();
-            FieldInfo finfo = type.GetField(fieldnames[0]);
-            PropertyInfo pinfo = type.GetProperty(fieldnames[0]);
-
-            // If the field is not present then steps to next element
-            if (finfo == null && pinfo == null)
-            {
-                arr = new Tout[] { };
-                return arr;
-            }
-
-            // Retreives the top level field value as an object
-            object value;
-            if (finfo != null)
-                value = finfo.GetValue(ival);
-            else
-                value = pinfo.GetValue(ival);
-
-            // Repeats the operation through each subfield 
-            for (int idx = 1; idx < fieldnames.Length; idx++)
-            {
-                type = value.GetType();
-                finfo = type.GetField(fieldnames[idx]);
-                pinfo = type.GetProperty(fieldnames[idx]);
+                if (value == null)
+                    return new Tout[0];
+                // The default string path is empty and requires no traversal.
+                if (fieldnames.Length == 1 && fieldnames[idx] == "")
+                    break;
+                Type type = value.GetType();
+                FieldInfo finfo = type.GetField(fieldnames[idx]);
+                PropertyInfo pinfo = type.GetProperty(fieldnames[idx]);
                 if (finfo == null && pinfo == null)
-                {
-                    arr = new Tout[] { };
-                    return arr;
-                }
+                    return new Tout[0];
                 if (finfo != null)
                     value = finfo.GetValue(value);
                 else
@@ -71,14 +47,12 @@ namespace Isidore.Matlab
             }
 
             // Handles arrays and variables separately to avoid errord
+            if (value == null)
+                return new Tout[0];
             var vType = value.GetType();
             if (vType.IsArray)
-                arr = (Tout[])value;
-            else
-                arr = new Tout[] { (Tout)value };
-
-            // Returns array
-            return arr;
+                return (Tout[])value;
+            return new Tout[] { (Tout)value };
         }
 
         /// <summary>
@@ -110,7 +84,7 @@ namespace Isidore.Matlab
             }
 
             // Sets output array
-            var vlen = jagArr.Max(x => x.Length); // Finds maximum vector length
+            var vlen = jagArr.Length == 0 ? 0 : jagArr.Max(x => x.Length);
             var valArr = new Tout[alen0, vlen];
 
             // Populates the array

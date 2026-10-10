@@ -55,7 +55,7 @@ namespace Isidore.Models
             distFunc = DistFunc(noiseDist);
 
             // Makes certain the standard normal flag is set
-            noiseFunc.StandardNormal = true;
+            ((PerlinNoiseFunction)this.noiseFunc).StandardNormal = true;
         }
 
         #endregion Constructors
@@ -95,7 +95,9 @@ namespace Isidore.Models
 
                 // Adds the frequency noise to the summed noise
                 noise += inoise;
-                fac += power;
+                // Unit-variance octave contributions have variance power^2
+                // after weighting. Normalize by the sum of these variances.
+                fac += power * power;
             }
 
             // Scales noise value to standard normal;
@@ -124,7 +126,7 @@ namespace Isidore.Models
         /// Deep-copy clone of this instance
         /// </summary>
         /// <returns> Clone copy of this instance </returns>
-        new protected virtual fBmNoise CloneImp()
+        protected override Noise CloneImp()
         {
             // Shallow copies from base
             TurbulentNoise newCopy = base.CloneImp() as TurbulentNoise;

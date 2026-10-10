@@ -215,12 +215,14 @@
     </COMReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <PropertyGroup>
-    <PostBuildEvent>
-xcopy /s /y "$(SolutionDir)packages\Rhino3dmIO.dll-AnyCPU-Windows.5.1.30000.25\NativeBinaries\x86\*.*" "$(TargetDir)x86\"
-xcopy /s /y "$(SolutionDir)packages\Rhino3dmIO.dll-AnyCPU-Windows.5.1.30000.25\NativeBinaries\x64\*.*" "$(TargetDir)x64\"
-</PostBuildEvent>
-  </PropertyGroup>
+  <Target Name="CopyRhinoNativeBinaries" AfterTargets="Build">
+    <ItemGroup>
+      <RhinoNativeX86 Include="$(MSBuildProjectDirectory)\..\packages\Rhino3dmIO.dll-AnyCPU-Windows.5.1.30000.25\NativeBinaries\x86\*.*" />
+      <RhinoNativeX64 Include="$(MSBuildProjectDirectory)\..\packages\Rhino3dmIO.dll-AnyCPU-Windows.5.1.30000.25\NativeBinaries\x64\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(RhinoNativeX86)" DestinationFolder="$(TargetDir)x86" SkipUnchangedFiles="true" Condition="'@(RhinoNativeX86)' != ''" />
+    <Copy SourceFiles="@(RhinoNativeX64)" DestinationFolder="$(TargetDir)x64" SkipUnchangedFiles="true" Condition="'@(RhinoNativeX64)' != ''" />
+  </Target>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

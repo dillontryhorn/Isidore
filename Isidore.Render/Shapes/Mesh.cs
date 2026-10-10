@@ -171,10 +171,10 @@ namespace Isidore.Render
             // Converts the vertice arrays to a vertex list
             localVertices = new Vertices();
             var vplen1 = vertexPositions.GetLength(1);
-            var vnlen = vertexNormals.GetLength(0);
-            var vnlen1 = vertexNormals.GetLength(1);
-            var vtlen = vertexUV.GetLength(0);
-            var vtlen1 = vertexUV.GetLength(1);
+            var vnlen = vertexNormals == null ? 0 : vertexNormals.GetLength(0);
+            var vnlen1 = vertexNormals == null ? 0 : vertexNormals.GetLength(1);
+            var vtlen = vertexUV == null ? 0 : vertexUV.GetLength(0);
+            var vtlen1 = vertexUV == null ? 0 : vertexUV.GetLength(1);
             for(int vidx = 0; vidx < vertexPositions.GetLength(0); vidx++)
             {
                 // Vertex position
@@ -281,6 +281,9 @@ namespace Isidore.Render
             // Cycles through each octbox from nearest to farthest
             for (int oIdx = 0; oIdx < oData.Count; oIdx++)
             {
+                if (oData[oIdx].NearTravel > ray.IntersectData.Travel)
+                    break;
+
                 MeshOctBox mBox = oData[oIdx].OctBox as MeshOctBox;
 
                 // Cycles through each facet overlapping this box,
@@ -304,6 +307,7 @@ namespace Isidore.Render
                         // or far, continues on with the next facet
                         if (!fData.Item1 ||
                             fData.Item2 >= ray.IntersectData.Travel ||
+                            fData.Item2 > ray.MaximumTravel ||
                             fData.Item2 < ray.MinimumTravel)
                             continue;
 
@@ -341,6 +345,10 @@ namespace Isidore.Render
                                 globalVertices[Facets[facetIdx][0]].Normal.Comp,
                                 globalVertices[Facets[facetIdx][1]].Normal.Comp,
                                 globalVertices[Facets[facetIdx][2]].Normal.Comp);
+                            if (norm.Mag() == 0)
+                                norm = new Normal(normal[facetIdx].CopyNormalize());
+                            else
+                                norm.Normalize();
 
                             // Cosine angle of incidence
                             double cosAngInc = -ray.Dir.Dot(norm);
@@ -369,10 +377,8 @@ namespace Isidore.Render
                     }
                 }
 
-                // If there has been an intersection, this 
-                // avoids tracing facets in boxes further away
-                if (intersected)
-                    break;
+                // An overlapping facet can intersect beyond this box.
+                // Continue until later boxes begin beyond the closest hit.
             }
 
             return intersected;
@@ -504,7 +510,7 @@ namespace Isidore.Render
         /// transform </param>
         public void LocalTransform(Transform trans, bool inverse = false)
         {
-            localVertices.Transform(trans);
+            localVertices.Transform(trans, inverse);
         }
 
         /// <summary>
@@ -536,7 +542,7 @@ namespace Isidore.Render
         /// Deep-copy clones this instance
         /// </summary>
         /// <returns> Clone copy of this instance </returns>
-        new protected Shape CloneImp()
+        protected override Item CloneImp()
         {
             Mesh newCopy = (Mesh)MemberwiseClone();
 
@@ -566,22 +572,27 @@ namespace Isidore.Render
             copy.localVertices = localVertices.Clone();
 
             //protected Vertices globalVertices;
-            copy.globalVertices = globalVertices.Clone();
+            if (globalVertices != null)
+                copy.globalVertices = globalVertices.Clone();
 
             //public List<int[]> Facets;
             copy.Facets = Facets.Select(f => (int[])f.Clone()).ToList();
 
             //private Vector[] edge1;
-            copy.edge1 = edge1.Select(e => e.Clone()).ToArray();
+            if (edge1 != null)
+                copy.edge1 = edge1.Select(e => e.Clone()).ToArray();
 
             //private Vector[] edge2;
-            copy.edge2 = edge2.Select(e => e.Clone()).ToArray();
+            if (edge2 != null)
+                copy.edge2 = edge2.Select(e => e.Clone()).ToArray();
 
             //private Vector[] normal;
-            copy.normal = normal.Select(n => n.Clone()).ToArray();
+            if (normal != null)
+                copy.normal = normal.Select(n => n.Clone()).ToArray();
 
             //private MeshOctree octree;
-            copy.octree = octree.Clone();
+            if (octree != null)
+                copy.octree = octree.Clone();
     }
 
         #endregion Methods

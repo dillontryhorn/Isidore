@@ -89,3 +89,5 @@
 /Isidore_Tests/OutputData - Copy MC Old/Models/TurbulencePointWFS/Output_TP_WFS
 /Isidore_Tests/OutputData - Copy MC Old/Models/TurbulentNoise/Output
 *.bak
+/tests/bin
+/tests/obj

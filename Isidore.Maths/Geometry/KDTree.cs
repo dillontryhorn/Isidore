@@ -46,7 +46,16 @@ namespace Isidore.Maths
         /// <param name="pts"> List of points </param>
         public KDTree(List<Point> pts)
         {
+            if (pts == null)
+                throw new ArgumentNullException("pts");
+            if (pts.Count == 0)
+                throw new ArgumentException("A K-D tree requires at least one point.", "pts");
+            if (pts[0] == null || pts[0].Comp == null || pts[0].Comp.Length == 0)
+                throw new ArgumentException("Points must have at least one coordinate.", "pts");
             DIM = pts[0].Comp.Length;
+            for (int idx = 0; idx < pts.Count; idx++)
+                if (pts[idx] == null || pts[idx].Comp == null || pts[idx].Comp.Length != DIM)
+                    throw new ArgumentException("All points must have the same number of coordinates.", "pts");
             ptss = pts;
             int npts = ptss.Count;
             ptindx = new int[npts];
@@ -62,7 +71,7 @@ namespace Isidore.Maths
 
             // Calculates and allocates for the total number of box nodes
             double M = Math.Pow(2.0, Math.Ceiling(Math.Log(npts, 2)));
-            int nboxes = (int)Math.Min(M - 1, 2 * npts - 0.5 * M - 1);
+            int nboxes = Math.Max(1, (int)Math.Min(M - 1, 2 * npts - 0.5 * M - 1));
             boxes = new BoxNode[nboxes];
 
             // Copies each point's location components into a 
@@ -74,17 +83,16 @@ namespace Isidore.Maths
 
             // Initialize the root box and add it to the
             // subdivision task list
-            Point lo = new Point(double.NegativeInfinity,
-                double.NegativeInfinity, double.NegativeInfinity);
-            Point hi = new Point(double.PositiveInfinity,
-                double.PositiveInfinity, double.PositiveInfinity);
+            Point lo = Point.NegativeInfinity(DIM);
+            Point hi = Point.PositiveInfinity(DIM);
             boxes[0] = new BoxNode(lo, hi, 0, 0, 0, 0, npts - 1);
             int jbox = 0;
             // Box index
             taskmom[1] = 0;
             // Dimension index
             taskdim[1] = 0;
-            int nowtask = 1;
+            // Leaves already hold up to two points. Small trees need no split.
+            int nowtask = npts > 2 ? 1 : 0;
             // Main loop
             while (nowtask > 0)
             {
@@ -368,9 +376,11 @@ namespace Isidore.Maths
                 d2 = boxes[nb].dau2;
                 // Only need to check the dimension that 
                 // divides the daughters
-                if (pt.Comp[jdim] + r <= boxes[d1].hi.Comp[jdim])
+                // A ball touching the split plane can include points from
+                // either daughter, since the radius comparison is inclusive.
+                if (pt.Comp[jdim] + r < boxes[d1].hi.Comp[jdim])
                     nb = d1;
-                else if (pt.Comp[jdim] - r >= boxes[d2].lo.Comp[jdim])
+                else if (pt.Comp[jdim] - r > boxes[d2].lo.Comp[jdim])
                     nb = d2;
                 jdim = ++jdim % DIM;
                 // Neither daughter in within range

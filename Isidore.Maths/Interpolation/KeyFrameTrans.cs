@@ -27,17 +27,10 @@ namespace Isidore.Maths
         public KeyFrameTrans(Transform[] transforms = null, 
             double[] timeStamps = null, string interpolation = "linear",
             bool animate = true):
-            base(new Transform[] { new Transform() }, new double[] { 0.0 }) 
+            base(transforms == null ? new Transform[] { new Transform() } :
+                (Transform[])transforms.Clone(), timeStamps == null ?
+                new double[] { 0.0 } : (double[])timeStamps.Clone(), interpolation)
         {
-            if (transforms == null)
-                values = new Transform[1] { new Transform() };
-            else
-                values = (Transform[])transforms.Clone();
-            if (timeStamps == null)
-                times = new double[] { 0.0 };
-            else
-                times = (double[])timeStamps.Clone();
-            Interpolation = interpolation;
             Animate = animate;
         }
 
@@ -96,6 +89,7 @@ namespace Isidore.Maths
         {
             for (int idx = 0; idx < values.Length; idx++)
                 values[idx] = transform * values[idx];
+            RefreshCurrentValue();
         }
 
         /// <summary>
@@ -104,15 +98,20 @@ namespace Isidore.Maths
         /// </summary>
         /// <param name="timePt"> time point to interpolate to </param>
         /// <returns> Interpolated transform </returns>
-        new public Transform InterpolateToTime(double timePt)
+        public override Transform InterpolateToTime(double timePt)
         {
             // Because Transform isn't cover by expressions,
             // we need to explicitly express the interpolation
 
+            if (values.Length == 0)
+                throw new System.InvalidOperationException("There are no keys to interpolate.");
+            if (double.IsNaN(timePt))
+                throw new System.ArgumentException("The interpolation time must not be NaN.", "timePt");
             // Avoid redundancy by saving the current time's transform
-            if (timePt == currentTime)
+            if (timePt == currentTime && Animate == currentAnimate)
                 return currentValue;
             currentTime = timePt;
+            currentAnimate = Animate;
 
             // Outside bounds handler
             if (timePt <= times[0] || !Animate)

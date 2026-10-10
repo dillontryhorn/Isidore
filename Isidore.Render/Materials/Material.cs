@@ -84,7 +84,7 @@ namespace Isidore.Render
             if (sData != null)
             {
                 // Checks if alpha map has a non-zero value (and is not null)
-                if (Alpha != null && Alpha.GetVal(sData.U, sData.V) > 0)
+                if (Alpha != null && !(Alpha.GetVal(sData.U, sData.V) > 0))
                     return false;
             }
 
@@ -177,7 +177,7 @@ namespace Isidore.Render
                 // Checks if material texture is present
                 bool inter = this[idx].Apply(ref ray);
                 if (inter)
-                    continue;
+                    break;
             }
         }
 

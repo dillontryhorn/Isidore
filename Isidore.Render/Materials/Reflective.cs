@@ -61,9 +61,6 @@ namespace Isidore.Render
             if (sData == null)
                 return false;
 
-            // indicates an interaction
-            bool interaction = false;
-
             // Updates the properties to include effects of the material
             // Properties Clones
             Properties reflectProp = ray.Properties.Clone();
@@ -108,7 +105,7 @@ namespace Isidore.Render
             if (siTag > -1)
             {
                 // Deep copies the spectral irradiance
-                SpectralIrradiance sI = (SpectralIrradiance)reflectProp[iTag];
+                SpectralIrradiance sI = (SpectralIrradiance)reflectProp[siTag];
                 // Scales the reflected irradiance
                 double[] scale = Interpolate.Linear(sI.Wavelength,
                     Reflectance.Wavelength, Reflectance.Coefficient);
@@ -142,7 +139,7 @@ namespace Isidore.Render
             ray.IntersectData.CastedRays.Add(reflectRay);
 
             // returns interaction notification
-            return interaction;
+            return true;
         }
 
         /// <summary>
@@ -172,7 +169,7 @@ namespace Isidore.Render
         /// Deep-copy clones this instance
         /// </summary>
         /// <returns> Clone copy of this instance </returns>
-        new protected virtual Material CloneImp()
+        protected override Material CloneImp()
         {
             // Shallow copies from base
             Reflective newCopy = (Reflective)base.CloneImp();

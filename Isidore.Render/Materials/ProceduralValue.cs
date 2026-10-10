@@ -377,7 +377,7 @@ namespace Isidore.Render
         /// Deep-copy clones this instance
         /// </summary>
         /// <returns> Clone copy of this instance </returns>
-        new protected virtual Material CloneImp()
+        protected override Material CloneImp()
         {
             // Shallow copies from base
             ProceduralValue newCopy = (ProceduralValue)base.CloneImp();
@@ -386,8 +386,12 @@ namespace Isidore.Render
             if (noise != null)
                 newCopy.noise = noise.Clone();
             newCopy.polynomial = polynomial.Clone();
-            for (int idx = 0; idx < procPts.Count; idx++)
-                newCopy.procPts.Add(procPts[idx].Clone());
+            if (procPts != null)
+            {
+                newCopy.procPts = new List<ProceduralPoint>(procPts.Count);
+                for (int idx = 0; idx < procPts.Count; idx++)
+                    newCopy.procPts.Add(procPts[idx].Clone());
+            }
 
             return newCopy;
         }
@@ -447,7 +451,8 @@ namespace Isidore.Render
         /// <returns> Deep copy clone </returns>
         new public ProceduralPoint Clone()
         {
-            return new ProceduralPoint(Clone(), ProcNoiseParams);
+            return new ProceduralPoint(base.Clone(),
+                ProcNoiseParams == null ? null : ProcNoiseParams.Clone());
         }
 
         #endregion Methods

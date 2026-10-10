@@ -397,7 +397,7 @@ namespace Isidore.Render
         /// Deep-copy clone of this instance
         /// </summary>
         /// <returns> Clone copy of this instance </returns>
-        new protected virtual NoiseFunction CloneImp()
+        protected override NoiseFunction CloneImp()
         {
             // Shallow copies from base
             PerlinNoiseFunction newCopy = base.CloneImp() as PerlinNoiseFunction;

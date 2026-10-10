@@ -41,7 +41,6 @@ namespace Isidore.Maths
             Func<T, T, bool> lte = Operator<T>.LessThanOrEqual;
 
             int len0 = arr.GetLength(0);
-            int len1 = arr.GetLength(1);
             T[] threshArr = new T[len0];
             for (int i0 = 0; i0 < len0; i0++)
                     if (lte(arr[i0], thresh))
