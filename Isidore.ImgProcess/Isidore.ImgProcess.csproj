@@ -71,6 +71,7 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Edge.cs" />
+    <Compile Include="GpuSobel.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

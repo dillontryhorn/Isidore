@@ -19,6 +19,13 @@ namespace Isidore.Maths
             if(m0.GetLength(1) != m1.GetLength(0))
                 throw new System.ArgumentException(
                     "Inner matrix dimensions must agree.", "arr1");
+
+            // Exact primitive types share the native CPU/GPU path. Custom
+            // operator types retain their original delegate semantics.
+            if (typeof(T) == typeof(double))
+                return (T[,])(object)MatrixMultiply((double[,])(object)m0, (double[,])(object)m1);
+            if (typeof(T) == typeof(int))
+                return (T[,])(object)MatrixMultiply((int[,])(object)m0, (int[,])(object)m1);
             
             // Function delegates
             Func<T, T, T> multi = Operator<T>.Multiply;
@@ -50,6 +57,9 @@ namespace Isidore.Maths
                 throw new System.ArgumentException(
                     "Inner matrix dimensions must agree.", "arr1");
 
+            int[,] gpuProduct;
+            if (TryMatrixGpu(m0, m1, out gpuProduct)) return gpuProduct;
+
             int len0 = m0.GetLength(0);
             int len1 = m1.GetLength(1);
             int len = m0.GetLength(1);
@@ -75,6 +85,9 @@ namespace Isidore.Maths
             if (m0.GetLength(1) != m1.GetLength(0))
                 throw new System.ArgumentException(
                     "Inner matrix dimensions must agree.", "arr1");
+
+            double[,] gpuProduct;
+            if (TryMatrixGpu(m0, m1, out gpuProduct)) return gpuProduct;
 
             int len0 = m0.GetLength(0);
             int len1 = m1.GetLength(1);
@@ -106,6 +119,11 @@ namespace Isidore.Maths
                 throw new System.ArgumentException(
                     "Inner matrix dimensions must agree.", "arr1");
 
+            if (typeof(T) == typeof(double))
+                return (T[])(object)MatrixMultiply((double[,])(object)m0, (double[])(object)m1);
+            if (typeof(T) == typeof(int))
+                return (T[])(object)MatrixMultiply((int[,])(object)m0, (int[])(object)m1);
+
             // Function delegates
             Func<T, T, T> multi = Operator<T>.Multiply;
             Func<T, T, T> add = Operator<T>.Add;
@@ -134,6 +152,9 @@ namespace Isidore.Maths
                 throw new System.ArgumentException(
                     "Inner matrix dimensions must agree.", "arr1");
 
+            int[] gpuProduct;
+            if (TryMatrixGpu(m0, m1, out gpuProduct)) return gpuProduct;
+
             int len0 = m0.GetLength(0);
             int len = m0.GetLength(1);
             int[] m = new int[len0];
@@ -156,6 +177,9 @@ namespace Isidore.Maths
             if (m0.GetLength(1) != m1.Length)
                 throw new System.ArgumentException(
                     "Inner matrix dimensions must agree.", "arr1");
+
+            double[] gpuProduct;
+            if (TryMatrixGpu(m0, m1, out gpuProduct)) return gpuProduct;
 
             int len0 = m0.GetLength(0);
             int len = m0.GetLength(1);

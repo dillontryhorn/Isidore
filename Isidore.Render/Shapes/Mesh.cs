@@ -9,7 +9,7 @@ namespace Isidore.Render
     /// Represents a triangular facet mesh.  Each fact must be a a triangle.
     /// Meshes are also used in the Polymesh class.
     /// </summary>
-    public class Mesh : Shape
+    public partial class Mesh : Shape
     {
         # region Fields & Properties
 
@@ -303,77 +303,8 @@ namespace Isidore.Render
                             edge1[facetIdx], edge2[facetIdx],
                             normal[facetIdx], intersectThreshold);
 
-                        // If there's no intersection, or if it's too near
-                        // or far, continues on with the next facet
-                        if (!fData.Item1 ||
-                            fData.Item2 >= ray.IntersectData.Travel ||
-                            fData.Item2 > ray.MaximumTravel ||
-                            fData.Item2 < ray.MinimumTravel)
-                            continue;
-
-                        // Determines if the intersect has an alpha tag
-                        // Sets to true by default
-                        bool alphaIn = true;
-                        double[] textureUV = new double[] { double.NaN, 
-                            double.NaN };
-                        // Calculates the texture UV (for Alpha testing)
-                        // (After checking if there are UV coordinates)
-                        if ((UseAlpha || CalculateUV) &&
-                            globalVertices[Facets[facetIdx][0]].UV != null &&
-                            globalVertices[Facets[facetIdx][1]].UV != null &&
-                            globalVertices[Facets[facetIdx][2]].UV != null)
-                        {
-                            textureUV = baryInterpolate(fData.Item3,
-                                globalVertices[Facets[facetIdx][0]].UV,
-                                globalVertices[Facets[facetIdx][1]].UV,
-                                globalVertices[Facets[facetIdx][2]].UV);
-                            alphaIn = getAlpha(textureUV[0], textureUV[1]);
-                        }
-
-                        // Uses alpha value to trigger recording
-                        if (alphaIn)
-                        {
-                            // Propagation travel
-                            double travel = fData.Item2;
-
-                            // Intersect Point
-                            Point iPt = ray.Propagate(travel);
-
-                            // Normal
-                            Normal norm = new Normal();
-                            norm.Comp = baryInterpolate(fData.Item3,
-                                globalVertices[Facets[facetIdx][0]].Normal.Comp,
-                                globalVertices[Facets[facetIdx][1]].Normal.Comp,
-                                globalVertices[Facets[facetIdx][2]].Normal.Comp);
-                            if (norm.Mag() == 0)
-                                norm = new Normal(normal[facetIdx].CopyNormalize());
-                            else
-                                norm.Normalize();
-
-                            // Cosine angle of incidence
-                            double cosAngInc = -ray.Dir.Dot(norm);
-
-                            // if back face intersection option is off then returns if negative
-                            if (!IntersectBackFaces && cosAngInc < 0)
-                                continue;
-
-                            // Bounds cosine angle to +/- 1
-                            cosAngInc = Math.Min(Math.Abs(cosAngInc), 1);
-
-                            // Shape specific data
-                            ShapeSpecificData sData = new ShapeSpecificData(
-                                norm, cosAngInc, textureUV[0], textureUV[1]);
-
-                            // Intersect Data
-                            IntersectData iData = new IntersectData(true,
-                                travel, iPt, this, sData);
-
-                            // Updates ray intersect data
-                            ray.IntersectData = iData;
-
-                            // marks this mesh as intersected
+                        if (RecordFacetIntersection(ref ray, facetIdx, fData))
                             intersected = true;
-                        }
                     }
                 }
 
@@ -382,6 +313,53 @@ namespace Isidore.Render
             }
 
             return intersected;
+        }
+
+        // Both CPU traversal and GPU candidate verification use this exact
+        // surface acceptance path. Textures, shading normals and hit metadata
+        // continue to be evaluated on the CPU.
+        private bool RecordFacetIntersection(ref RenderRay ray, int facetIdx,
+            Tuple<bool, double, double[]> fData)
+        {
+            if (!fData.Item1 || fData.Item2 >= ray.IntersectData.Travel ||
+                fData.Item2 > ray.MaximumTravel || fData.Item2 < ray.MinimumTravel)
+                return false;
+
+            double[] textureUV = new double[] { double.NaN, double.NaN };
+            if ((UseAlpha || CalculateUV) &&
+                globalVertices[Facets[facetIdx][0]].UV != null &&
+                globalVertices[Facets[facetIdx][1]].UV != null &&
+                globalVertices[Facets[facetIdx][2]].UV != null)
+            {
+                textureUV = baryInterpolate(fData.Item3,
+                    globalVertices[Facets[facetIdx][0]].UV,
+                    globalVertices[Facets[facetIdx][1]].UV,
+                    globalVertices[Facets[facetIdx][2]].UV);
+                if (!getAlpha(textureUV[0], textureUV[1]))
+                    return false;
+            }
+
+            Point iPt = ray.Propagate(fData.Item2);
+            Normal norm = new Normal();
+            norm.Comp = baryInterpolate(fData.Item3,
+                globalVertices[Facets[facetIdx][0]].Normal.Comp,
+                globalVertices[Facets[facetIdx][1]].Normal.Comp,
+                globalVertices[Facets[facetIdx][2]].Normal.Comp);
+            if (norm.Mag() == 0)
+                norm = new Normal(normal[facetIdx].CopyNormalize());
+            else
+                norm.Normalize();
+
+            double cosAngInc = -ray.Dir.Dot(norm);
+            if (!IntersectBackFaces && cosAngInc < 0)
+                return false;
+            cosAngInc = Math.Min(Math.Abs(cosAngInc), 1);
+
+            ShapeSpecificData sData = new ShapeSpecificData(norm, cosAngInc,
+                textureUV[0], textureUV[1]);
+            ray.IntersectData = new IntersectData(true, fData.Item2,
+                iPt, this, sData);
+            return true;
         }
         
         /// <summary>

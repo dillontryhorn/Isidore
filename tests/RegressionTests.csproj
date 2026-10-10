@@ -9,6 +9,8 @@
     <OutputPath>bin\$(Configuration)\</OutputPath>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
+    <Optimize Condition="'$(Configuration)' == 'Release'">true</Optimize>
+    <Prefer32Bit>false</Prefer32Bit>
     <StartupObject>RegressionTests</StartupObject>
   </PropertyGroup>
   <ItemGroup>

@@ -35,6 +35,9 @@ namespace Isidore.ImgProcess
             Func<double, double> sqrt = x => Math.Sqrt(x);
 
             double[,] dArr = Operator.Convert<T, double>(arr);
+            Tuple<double[,], double[,], double[,]> gpuResult;
+            if (GpuSobel.TryProcess(dArr, Sob0, Sob1, out gpuResult))
+                return gpuResult;
             double[,] G0 = Arr.Convolve(dArr, Sob0);
             double[,] G1 = Arr.Convolve(dArr, Sob1);
             double[,] G2 = Operator.Add(Operator.Multiply(G0, G0), 

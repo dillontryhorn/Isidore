@@ -48,6 +48,9 @@ namespace Isidore.Render
         /// <returns> Array of IntersectData matching the projector rays </returns>
         public void OneCoreIntersect(ref Projector proj)
         {
+            Mesh mesh = this as Mesh;
+            if (mesh != null && mesh.TryGpuIntersect(proj))
+                return;
             Projector projClone = proj;
             // Cycles through every ray tree
             for (int idx = 0; idx < proj.Rays.Length; idx++)
@@ -62,6 +65,9 @@ namespace Isidore.Render
         /// <returns> Array of IntersectData matching the projector rays </returns>
         public void MultiCoreIntersect(ref Projector proj)
         {
+            Mesh mesh = this as Mesh;
+            if (mesh != null && mesh.TryGpuIntersect(proj))
+                return;
             Projector projClone = proj;
             Parallel.ForEach(Partitioner.Create(0, proj.Rays.Length), range => {
                 for (int idx = range.Item1; idx < range.Item2; idx++)

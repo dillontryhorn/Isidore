@@ -81,6 +81,106 @@ Console.WriteLine("Hit: {0}, travel: {1}", hit.Hit, hit.Travel);
 The regression runner checks this example with both single-core and multicore
 intersection processing.
 
+## GPU acceleration
+
+The existing APIs automatically use an OpenCL GPU for supported large batches.
+Use a **64-bit process** and a graphics driver exposing double-precision OpenCL 1.2+
+with an online compiler. A CUDA toolkit, native build step, and additional NuGet
+packages are unnecessary. Missing or incompatible drivers retain CPU execution.
+
+```csharp
+// Defaults to Automatic. All policies preserve the CPU fallback.
+GpuAcceleration.Mode = GpuMode.Automatic;
+GpuAcceleration.WarmUp(); // Initialize the driver; kernels compile when first used.
+Console.WriteLine(GpuAcceleration.DeviceName);
+
+// Useful for comparisons and applications that require the original CPU path.
+GpuAcceleration.Mode = GpuMode.Disabled;
+
+// Attempt supported kernels even for small batches (primarily for validation).
+GpuAcceleration.Mode = GpuMode.PreferGpu;
+```
+
+`ISIDORE_GPU=off` or `ISIDORE_GPU=force` selects the startup policy. The types live
+in `Isidore.Maths`. `IsAvailable`, `LastError`, and `DispatchCount` expose driver
+availability, fallback diagnostics, and actual completed GPU work.
+
+Accelerated paths include:
+
+- `Arr.MatrixMultiply` for `double` and `int` matrices, using shared-memory tiles,
+  and large matrix-vector batches using independent row dot products.
+- `Arr.Convolve` for `double` and `int` vectors and images, including mixed-type
+  overloads that convert to either supported output type.
+- `Sobel.Process` and the Sobel stage of `Canny.Process`, combining both gradient
+  convolutions and magnitude into one upload and kernel dispatch.
+- Supported triangle meshes traced through a projector or scene, batching
+  octree-selected triangle candidates and reconstructing accepted intersections
+  on the CPU.
+- `Noise.GetVal(Point[])` batches backed by three-dimensional Perlin noise,
+  including the exact built-in `FrequencyNoise`, `fBmNoise`,
+  `PerlinTurbulenceNoise`, and `SpectrumNoise` types and built-in distributions.
+  Octaves accumulate in their original order; coordinate floors and `Math.Pow`
+  weights are prepared on the CPU.
+
+Double precision and accumulation order are preserved; kernels disable floating
+point contraction and relaxed math. Integer kernels retain unchecked overflow.
+Image borders, even-sized convolution anchors, mutable Sobel coefficients and
+Perlin lookup tables retain their existing meaning. Canny's angle calculation,
+thinning, and hysteresis run on the CPU. Mesh alpha, normals, UV coordinates,
+materials, secondary rays, and body ordering also retain CPU processing;
+ambiguous candidates use the full CPU traversal.
+
+Custom numeric types, subclass behavior, arbitrary callbacks, unsupported noise
+dimensions, and small workloads use the existing CPU implementation. Direct
+single-ray mesh intersections and highly selective mesh octrees remain on the CPU
+in automatic mode. File I/O, MATLAB COM, GUI work, sequential timelines, and
+inexpensive scalar geometry are not GPU workloads. The stateful turbulence model
+workflows and scalar four-dimensional noise retain CPU processing.
+
+Programs and bounded device buffers are cached and shared safely across callers.
+Every call uploads current input data; public mutable arrays never rely on stale
+device copies. Failed GPU operations leave output buffers unchanged before CPU
+fallback. `GpuAcceleration.ReleaseResources()` clears caches and permits device
+rediscovery. The first call includes driver initialization and compilation;
+subsequent calls reuse those resources. Hardware and transfer costs affect the
+break-even size, so use the benchmark command below for your workload.
+Automatic mode uses separate thresholds for driver startup, each kernel's first
+compilation, and subsequent execution. `WarmUp()` initializes the driver only;
+each kernel's lower warm threshold applies after its first successful dispatch.
+Automatic Perlin and matrix-vector batches require prior driver initialization
+through `WarmUp()`, an availability query, or another GPU operation because their
+startup cost exceeds the savings from a single batch. For repeated modest batches, using
+`PreferGpu` for one representative call prepares that kernel; then return to
+`Automatic` for subsequent work.
+
+Measured on this Windows machine's NVIDIA GeForce RTX 4060 Laptop GPU (driver
+617.42), using Release builds and the median of three warm calls:
+
+| Operation and input | CPU ms | GPU ms | Speedup |
+| --- | ---: | ---: | ---: |
+| Double matrix product, 256 × 256 | 155.03 | 1.02 | 152.4× |
+| Double matrix-vector product, 4096 × 4096 | 119.58 | 18.15 | 6.6× |
+| Convolution, 512 × 512 image, 7 × 7 filter | 219.17 | 5.34 | 41.0× |
+| Sobel, 1024 × 1037 image | 347.92 | 15.38 | 22.6× |
+| Complete Canny, 1024 × 1037 image | 488.82 | 172.63 | 2.8× |
+| Perlin, 131,072 points | 42.22 | 22.08 | 1.9× |
+| fBm, 131,072 points, ten octaves | 399.75 | 135.76 | 2.9× |
+| Dense mesh, 1024 rays and 1024 facets | 352.29 | 70.67 | 5.0× |
+
+Timings include input packing, transfers, result allocation, and remaining CPU
+processing. The mesh comparison uses multicore CPU intersection and excludes
+scene initialization and octree construction; the other comparisons use their
+existing CPU implementations. GPU dispatch and result equivalence were verified
+for every measured case. These are representative workloads, not a promise of
+the same speedup for every input or device. Forced GPU execution was slower than
+multicore CPU traversal on selective mesh benchmarks, so automatic mode bypasses
+meshes whose octree leaves all contain fewer than 128 facets.
+
+First maths dispatches took roughly 2–2.5 seconds including driver setup and
+compilation. An isolated driver warm-up took about two seconds, with first kernel
+execution adding another 0.17–0.57 seconds. Warm figures exclude those startup
+costs; automatic mode accounts for them through its separate thresholds.
+
 ## Maths, textures, and turbulence
 
 `Point`, `Vector`, `Normal`, and `Transform` form the shared geometry layer.
@@ -222,6 +322,21 @@ code. If MSBuild cannot be discovered, pass `-MSBuildPath "C:\path\to\MSBuild.ex
 MATLAB is unnecessary for this runner: it compiles the production MATLAB wrapper
 source against a test double to verify transfer orientation, MAT-file load calls,
 and cleanup. Those checks do not verify the real MATLAB COM server.
+
+For GPU/CPU equivalence checks and end-to-end Release benchmarks:
+
+```powershell
+.\tests\run-regressions.ps1 -Configuration Release -RequireGpu -Benchmark
+.\tests\run-regressions.ps1 -Configuration Release -CpuOnly
+```
+
+Hardware comparisons assert that kernels actually dispatched, then compare
+results against CPU execution. `-RequireGpu` fails if no compatible device is
+available; ordinary runs skip hardware comparisons on those machines. Benchmark
+timings include packing, allocation, transfers, downloads and remaining CPU work.
+Maths benchmarks report warm and first-dispatch measurements separately. Image,
+noise, and mesh benchmarks report warm measurements; mesh output includes both
+single-core and multicore CPU comparisons and automatic-policy dispatch counts.
 
 To run the original demonstrations after building the full solution:
 

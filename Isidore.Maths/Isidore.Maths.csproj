@@ -72,6 +72,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Acceleration\GpuAcceleration.cs" />
+    <Compile Include="ArrayOperations\GpuArrayOperations.cs" />
     <Compile Include="ArrayOperations\Shuffle.cs" />
     <Compile Include="ArrayOperations\Get.cs" />
     <Compile Include="ArrayOperations\Inverse.cs" />

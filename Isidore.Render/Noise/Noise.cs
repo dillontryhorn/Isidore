@@ -274,6 +274,11 @@ namespace Isidore.Render
             double multiplier, double offset, 
             Func<double, double> distFunc)
         {
+            double[] gpuValues;
+            if (GpuNoise.TryGetValues(this, coord, shift, multiplier, offset,
+                distFunc, out gpuValues))
+                return gpuValues;
+
             double[] vals = new double[coord.Length];
             for (int idx = 0; idx < coord.Length; idx++)
             {

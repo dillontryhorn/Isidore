@@ -97,6 +97,7 @@
     <Compile Include="Noise\FrequencyNoise.cs" />
     <Compile Include="Noise\mBmCascadeNoise.cs" />
     <Compile Include="Noise\Noise.cs" />
+    <Compile Include="Noise\GpuNoise.cs" />
     <Compile Include="Noise\NoiseFunction.cs" />
     <Compile Include="Noise\PerlinMarbleNoise.cs" />
     <Compile Include="Noise\fBmNoise.cs" />
@@ -133,6 +134,7 @@
     <Compile Include="Materials\Material.cs" />
     <Compile Include="Texture\Texture.cs" />
     <Compile Include="Shapes\Mesh.cs" />
+    <Compile Include="Shapes\Mesh.Gpu.cs" />
     <Compile Include="Item.cs" />
     <Compile Include="Shapes\Plane.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -4,9 +4,25 @@ using Isidore.Render;
 
 internal static class RegressionTests
 {
-    private static int Main()
+    private static int Main(string[] args)
     {
+        if (Array.IndexOf(args, "--cpu") >= 0 &&
+            (Array.IndexOf(args, "--benchmark") >= 0 || Array.IndexOf(args, "--require-gpu") >= 0))
+        {
+            Console.Error.WriteLine("CPU-only execution cannot require or benchmark a GPU.");
+            return 1;
+        }
+        if (Array.IndexOf(args, "--cpu") >= 0)
+            GpuAcceleration.Mode = GpuMode.Disabled;
+        if (Array.IndexOf(args, "--require-gpu") >= 0 && !GpuAcceleration.IsAvailable)
+        {
+            Console.Error.WriteLine("A compatible GPU is required: " + GpuAcceleration.LastError);
+            return 1;
+        }
         int failed = 0;
+        bool cpuOnly = Array.IndexOf(args, "--cpu") >= 0;
+        if (!cpuOnly)
+            Run("GPU runtime and safe fallback", GpuRuntimeRegression.Run, ref failed);
         Run("Maths", MathsRegression.Run, ref failed);
         Run("Additional maths edge cases", AdditionalMathsRegression.Run, ref failed);
         Run("Render", RenderRegression.Run, ref failed);
@@ -16,6 +32,20 @@ internal static class RegressionTests
         Run("MATLAB wrapper (test double) and data extraction", MatlabRegression.Run, ref failed);
         Run("Additional MATLAB edge cases", AdditionalMatlabRegression.Run, ref failed);
         Run("Scene and embedded asset smoke checks", SmokeChecks, ref failed);
+        if (!cpuOnly)
+        {
+            Run("GPU maths equivalence", GpuMathsRegression.Run, ref failed);
+            Run("GPU image equivalence", GpuImageRegression.Run, ref failed);
+            Run("GPU noise equivalence", GpuNoiseRegression.Run, ref failed);
+            Run("GPU rendering equivalence", GpuRenderRegression.Run, ref failed);
+        }
+        if (failed == 0 && Array.IndexOf(args, "--benchmark") >= 0)
+        {
+            GpuMathsRegression.Benchmark();
+            Console.WriteLine(GpuImageRegression.Benchmark());
+            Console.WriteLine(GpuNoiseRegression.Benchmark());
+            Console.WriteLine(GpuRenderRegression.Benchmark());
+        }
         Console.WriteLine(failed == 0 ? "All regression groups passed." : failed + " regression group(s) failed.");
         return failed == 0 ? 0 : 1;
     }

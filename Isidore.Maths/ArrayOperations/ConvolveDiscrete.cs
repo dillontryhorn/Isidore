@@ -17,6 +17,9 @@ namespace Isidore.Maths
         /// <returns> Convolved array </returns>
         public static T[,] Convolve<T>(T[,] arr, T[,] kern)
         {
+            T[,] gpuResult;
+            if (TryConvolutionGpu(arr, kern, out gpuResult)) return gpuResult;
+
             // Supporting expressions
             Func<T, T, T> add = Operator<T>.Add;
             Func<T, T, T> multi = Operator<T>.Multiply;
@@ -79,6 +82,9 @@ namespace Isidore.Maths
         /// <returns> Convolved array </returns>
         public static T[] Convolve<T>(T[] arr, T[] kern)
         {
+            T[] gpuResult;
+            if (TryConvolutionGpu(arr, kern, out gpuResult)) return gpuResult;
+
             // Supporting expressions
             Func<T, T, T> add = Operator<T>.Add;
             Func<T, T, T> multi = Operator<T>.Multiply;
